@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Engineer Growth Roadmap — Sathish R</title>
+<style>
+  :root{
+    --ink:#0b0d12;
+    --panel:#11141c;
+    --panel-2:#161a24;
+    --line:#222838;
+    --line-soft:#1a1f2b;
+    --text:#e7eaf0;
+    --muted:#9aa3b5;
+    --faint:#5b6478;
+    --t1:#34d399; /* emerald  */
+    --t2:#38bdf8; /* cyan     */
+    --t3:#fbbf24; /* amber    */
+    --t4:#fb7185; /* rose     */
+    --serif:Georgia,'Iowan Old Style','Palatino Linotype',Palatino,'Times New Roman',serif;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,'Helvetica Neue',Arial,sans-serif;
+    --mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono',monospace;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+  body{
+    font-family:var(--sans);
+    background:var(--ink);
+    color:var(--text);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+    position:relative;
+  }
+  /* faint blueprint grid + vignette */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:
+      linear-gradient(rgba(120,140,180,.04) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(120,140,180,.04) 1px,transparent 1px);
+    background-size:46px 46px;
+  }
+  body::after{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(140% 90% at 50% -10%,transparent 55%,rgba(0,0,0,.55) 100%);
+  }
+  .wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 24px}
+
+  a{color:inherit;text-decoration:none}
+
+  /* ---------- sticky progress nav ---------- */
+  header.nav{
+    position:sticky;top:0;z-index:50;
+    backdrop-filter:blur(12px);
+    background:rgba(11,13,18,.78);
+    border-bottom:1px solid var(--line-soft);
+  }
+  .nav-inner{
+    max-width:1080px;margin:0 auto;padding:12px 24px;
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  }
+  .brand{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+  .brand b{color:var(--text);font-weight:700}
+  .pills{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+  .pill{
+    font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+    padding:5px 11px;border:1px solid var(--line);border-radius:999px;
+    color:var(--muted);transition:.18s;white-space:nowrap;
+  }
+  .pill:hover{color:var(--text);border-color:var(--faint);transform:translateY(-1px)}
+  .pill[data-t="1"]:hover{border-color:var(--t1);color:var(--t1)}
+  .pill[data-t="2"]:hover{border-color:var(--t2);color:var(--t2)}
+  .pill[data-t="3"]:hover{border-color:var(--t3);color:var(--t3)}
+  .pill[data-t="4"]:hover{border-color:var(--t4);color:var(--t4)}
+  .progress-wrap{display:flex;align-items:center;gap:10px;width:100%;margin-top:4px}
+  .bar{flex:1;height:5px;border-radius:999px;background:var(--panel-2);overflow:hidden;border:1px solid var(--line-soft)}
+  .bar > i{display:block;height:100%;width:0%;border-radius:999px;
+    background:linear-gradient(90deg,var(--t1),var(--t2) 45%,var(--t3) 75%,var(--t4));
+    transition:width .5s cubic-bezier(.4,0,.2,1)}
+  .pct{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap;min-width:120px;text-align:right}
+  .pct b{color:var(--text)}
+
+  /* ---------- hero ---------- */
+  .hero{padding:88px 0 56px;text-align:center;position:relative}
+  .kicker{
+    font-family:var(--mono);font-size:12px;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--t2);margin-bottom:22px;
+  }
+  .hero h1{
+    font-family:var(--serif);font-weight:400;letter-spacing:-.01em;
+    font-size:clamp(2.4rem,6vw,4.6rem);line-height:1.04;margin-bottom:22px;
+  }
+  .hero h1 em{font-style:italic;color:var(--t2)}
+  .hero .lede{max-width:660px;margin:0 auto;color:var(--muted);font-size:clamp(1rem,1.7vw,1.18rem)}
+  .meta-row{
+    display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:34px;
+  }
+  .chip{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;
+    padding:7px 14px;border:1px solid var(--line);border-radius:6px;color:var(--muted);
+    background:var(--panel);
+  }
+  .chip b{color:var(--text)}
+
+  /* ---------- how-to + timeline ---------- */
+  .section-pad{padding:34px 0}
+  .howto{
+    background:var(--panel);border:1px solid var(--line-soft);border-radius:14px;
+    padding:28px 30px;margin-top:8px;
+  }
+  .howto h2{font-family:var(--mono);font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--text);margin-bottom:16px}
+  .howto h2::before{content:"// ";color:var(--t2)}
+  .howto p{color:var(--muted);font-size:.97rem}
+  .howto p + p{margin-top:12px}
+  .howto strong{color:var(--text);font-weight:600}
+
+  .timeline{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:24px;
+  }
+  .tl{
+    border:1px solid var(--line-soft);border-radius:12px;padding:18px;background:var(--panel-2);
+    position:relative;overflow:hidden;
+  }
+  .tl::before{content:"";position:absolute;top:0;left:0;right:0;height:3px}
+  .tl[data-t="1"]::before{background:var(--t1)}
+  .tl[data-t="2"]::before{background:var(--t2)}
+  .tl[data-t="3"]::before{background:var(--t3)}
+  .tl[data-t="4"]::before{background:var(--t4)}
+  .tl .when{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+  .tl .what{font-weight:700;margin:8px 0 4px;font-size:.98rem}
+  .tl .sub{font-size:.84rem;color:var(--muted)}
+
+  /* ---------- tier sections ---------- */
+  .tier{padding:64px 0 8px;position:relative}
+  .tier-head{display:flex;align-items:flex-end;gap:22px;margin-bottom:30px;border-bottom:1px solid var(--line);padding-bottom:22px}
+  .tier-num{
+    font-family:var(--serif);font-size:clamp(3.4rem,9vw,6rem);line-height:.8;font-weight:700;
+    -webkit-text-stroke:1.5px currentColor;color:transparent;opacity:.85;
+  }
+  .tier-meta .tlabel{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase}
+  .tier-meta h2{font-family:var(--serif);font-weight:400;font-size:clamp(1.7rem,3.6vw,2.6rem);line-height:1.1;margin:4px 0 6px}
+  .tier-meta p{color:var(--muted);font-size:.95rem;max-width:640px}
+  .tier[data-t="1"] .tier-num,.tier[data-t="1"] .tlabel{color:var(--t1)}
+  .tier[data-t="2"] .tier-num,.tier[data-t="2"] .tlabel{color:var(--t2)}
+  .tier[data-t="3"] .tier-num,.tier[data-t="3"] .tlabel{color:var(--t3)}
+  .tier[data-t="4"] .tier-num,.tier[data-t="4"] .tlabel{color:var(--t4)}
+
+  /* ---------- project card ---------- */
+  .card{
+    background:var(--panel);border:1px solid var(--line-soft);border-left-width:3px;
+    border-radius:12px;margin-bottom:18px;overflow:hidden;
+    opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease,border-color .2s;
+  }
+  .card.in{opacity:1;transform:none}
+  .tier[data-t="1"] .card{border-left-color:var(--t1)}
+  .tier[data-t="2"] .card{border-left-color:var(--t2)}
+  .tier[data-t="3"] .card{border-left-color:var(--t3)}
+  .tier[data-t="4"] .card{border-left-color:var(--t4)}
+  .card:hover{border-color:var(--faint)}
+
+  .card-top{display:flex;align-items:flex-start;gap:16px;padding:22px 24px;cursor:pointer}
+  .check{
+    flex:none;width:24px;height:24px;border-radius:7px;border:1.5px solid var(--line);
+    background:var(--panel-2);display:grid;place-items:center;margin-top:2px;transition:.18s;
+  }
+  .check svg{width:14px;height:14px;opacity:0;transform:scale(.5);transition:.18s}
+  .card.done .check{border-color:transparent}
+  .tier[data-t="1"] .card.done .check{background:var(--t1)}
+  .tier[data-t="2"] .card.done .check{background:var(--t2)}
+  .tier[data-t="3"] .card.done .check{background:var(--t3)}
+  .tier[data-t="4"] .card.done .check{background:var(--t4)}
+  .card.done .check svg{opacity:1;transform:scale(1);stroke:#0b0d12}
+
+  .card-head{flex:1;min-width:0}
+  .pno{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--faint)}
+  .card-head h3{font-size:1.18rem;font-weight:700;letter-spacing:-.01em;margin:3px 0 0;transition:.18s}
+  .card.done .card-head h3{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1px;text-decoration-color:var(--faint)}
+  .tagline{color:var(--muted);font-size:.92rem;margin-top:6px}
+  .badges{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;align-items:center}
+  .badge{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;padding:4px 9px;border-radius:5px;border:1px solid var(--line);color:var(--muted)}
+  .badge.effort{border-style:dashed}
+  .toggle{flex:none;align-self:center;color:var(--faint);font-family:var(--mono);font-size:20px;line-height:1;transition:transform .25s;user-select:none}
+  .card.open .toggle{transform:rotate(45deg)}
+
+  .body{max-height:0;overflow:hidden;transition:max-height .45s cubic-bezier(.4,0,.2,1)}
+  .body-inner{padding:4px 24px 26px 64px;border-top:1px solid var(--line-soft);margin-top:2px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:20px}
+  .blk h4{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:11px}
+  .blk h4::before{content:"› ";color:inherit;opacity:.7}
+  .tier[data-t="1"] .blk h4::before{color:var(--t1)}
+  .tier[data-t="2"] .blk h4::before{color:var(--t2)}
+  .tier[data-t="3"] .blk h4::before{color:var(--t3)}
+  .tier[data-t="4"] .blk h4::before{color:var(--t4)}
+  ol.steps{list-style:none;counter-reset:s}
+  ol.steps li{counter-increment:s;position:relative;padding:0 0 12px 30px;font-size:.92rem;color:#cdd3df}
+  ol.steps li::before{
+    content:counter(s,decimal-leading-zero);position:absolute;left:0;top:1px;
+    font-family:var(--mono);font-size:11px;color:var(--faint);
+  }
+  ol.steps li:last-child{padding-bottom:0}
+  ul.plain{list-style:none}
+  ul.plain li{position:relative;padding:0 0 9px 18px;font-size:.92rem;color:#cdd3df}
+  ul.plain li::before{content:"—";position:absolute;left:0;color:var(--faint)}
+
+  .stack{display:flex;gap:6px;flex-wrap:wrap}
+  .stack span{font-family:var(--mono);font-size:11px;padding:4px 9px;border-radius:5px;background:var(--panel-2);border:1px solid var(--line);color:#c4cbd9}
+
+  .payoff{
+    margin-top:22px;padding:16px 18px;border-radius:10px;background:var(--panel-2);
+    border:1px solid var(--line-soft);position:relative;
+  }
+  .payoff .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .payoff q{font-family:var(--serif);font-size:1.02rem;font-style:italic;color:#eef1f6;display:block;line-height:1.5}
+  .payoff q::before{content:"";}
+
+  /* ---------- closing ---------- */
+  .close{margin:72px 0 40px;text-align:center;padding:48px 24px;border:1px solid var(--line-soft);border-radius:16px;background:var(--panel)}
+  .close .kicker{color:var(--t3)}
+  .close h2{font-family:var(--serif);font-weight:400;font-size:clamp(1.6rem,3.5vw,2.4rem);margin-bottom:14px}
+  .close p{color:var(--muted);max-width:560px;margin:0 auto .8rem}
+  footer{padding:40px 0 60px;text-align:center;color:var(--faint);font-family:var(--mono);font-size:11.5px;letter-spacing:.08em}
+  footer b{color:var(--muted)}
+
+  @media (max-width:760px){
+    .grid2{grid-template-columns:1fr;gap:20px}
+    .timeline{grid-template-columns:1fr 1fr}
+    .body-inner{padding-left:24px}
+    .tier-head{gap:14px}
+    .pct{min-width:0}
+    .pills{display:none}
+  }
+  @media (max-width:460px){
+    .timeline{grid-template-columns:1fr}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important;animation:none!important}
+    .card{opacity:1;transform:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ STICKY NAV ============ -->
+<header class="nav">
+  <div class="nav-inner">
+    <span class="brand">AI&nbsp;Engineer&nbsp;Roadmap&nbsp;·&nbsp;<b>Sathish&nbsp;R</b></span>
+    <nav class="pills">
+      <a class="pill" data-t="1" href="#tier1">T1 · Essential</a>
+      <a class="pill" data-t="2" href="#tier2">T2 · Intermediate</a>
+      <a class="pill" data-t="3" href="#tier3">T3 · Advanced</a>
+      <a class="pill" data-t="4" href="#tier4">T4 · Elite</a>
+    </nav>
+    <div class="progress-wrap">
+      <div class="bar"><i id="barFill"></i></div>
+      <span class="pct"><b id="doneN">0</b>/15 shipped · <b id="pctN">0%</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="kicker">Personal Portfolio &amp; Career Plan · 2025–2026</div>
+    <h1>The AI Engineer<br><em>Growth Roadmap</em></h1>
+    <p class="lede">Fifteen production-grade projects, sequenced from foundations to elite differentiators — each expanded into a concrete execution plan with milestones, a stack, deliverables, and the résumé line it unlocks.</p>
+    <div class="meta-row">
+      <span class="chip"><b>15</b> projects</span>
+      <span class="chip"><b>4</b> tiers</span>
+      <span class="chip">Target: <b>Generative AI / AI Engineer</b></span>
+      <span class="chip">Edge: <b>Geospatial &amp; Multimodal AI</b></span>
+    </div>
+  </section>
+
+  <!-- ============ HOW TO USE ============ -->
+  <section class="section-pad">
+    <div class="howto">
+      <h2>How to use this roadmap</h2>
+      <p>This is a build order, not a wishlist. Work top-down: <strong>Tier 1 is non-negotiable</strong> — it covers the table-stakes an AI Engineer screen filters on. Each tier after that raises your ceiling. You don't need all fifteen; finishing <strong>Tier 1 fully, plus a selective sweep through Tiers 2–4, beats fifteen half-built repos.</strong></p>
+      <p>For every project: ship a clean GitHub repo with a real README (problem → architecture diagram → results), <strong>capture the metrics as you build</strong> (latency, throughput, eval scores, cost saved — these become your résumé numbers), and record a 60–90s demo. Tick the box on a card when it's genuinely portfolio-ready. Your progress persists locally when you save this file.</p>
+      <p><strong>Priority pick if you only do five:</strong> the RAG system, the multi-agent build, the multimodal geospatial project (your unique edge), the inference/serving work, and a full LLMOps pipeline. That set maps cleanly onto almost every AI Engineer job description.</p>
+    </div>
+
+    <div class="timeline">
+      <div class="tl" data-t="1"><div class="when">Month 1–2</div><div class="what">Foundations</div><div class="sub">RAG, doc intelligence, agents, MCP — the core vocabulary.</div></div>
+      <div class="tl" data-t="2"><div class="when">Month 2–3</div><div class="what">Rigor &amp; Breadth</div><div class="sub">Evaluation, corrective RAG, text-to-SQL, guardrails.</div></div>
+      <div class="tl" data-t="3"><div class="when">Month 3–5</div><div class="what">Differentiators</div><div class="sub">Multimodal niche, serving infra, fine-tuning, cost optimization.</div></div>
+      <div class="tl" data-t="4"><div class="when">Month 5–6+</div><div class="what">Elite Signal</div><div class="sub">Full LLMOps platform, real-time voice, synthetic data.</div></div>
+    </div>
+  </section>
+
+
+  <!-- ====================================================== -->
+  <!-- TIER 1 -->
+  <!-- ====================================================== -->
+  <section class="tier" data-t="1" id="tier1">
+    <div class="tier-head">
+      <div class="tier-num">01</div>
+      <div class="tier-meta">
+        <div class="tlabel">Tier 1 · Must Have</div>
+        <h2>Essential Projects</h2>
+        <p>The foundation every credible AI Engineer portfolio stands on. Without these, a recruiter has no reason to read further. Build all four.</p>
+      </div>
+    </div>
+
+    <!-- P1.1 -->
+    <article class="card" data-id="p1-1">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 01 / 15</div>
+          <h3>Production RAG System with Evaluation</h3>
+          <p class="tagline">Hybrid retrieval over a real corpus, reranked and measured — the project that proves you can build retrieval that actually works, not a toy.</p>
+          <div class="badges">
+            <span class="badge effort">~2 weeks</span>
+            <span class="badge">RAG</span><span class="badge">Vector DB</span><span class="badge">Evaluation</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Ingest a domain corpus (agriculture / enterprise docs ties to your work); experiment with chunking strategies and overlap.</li>
+              <li>Stand up hybrid search: BM25 + dense embeddings in pgvector or Qdrant; tune the fusion weighting.</li>
+              <li>Add a cross-encoder reranker and measure the lift it buys you.</li>
+              <li>Wrap it in a FastAPI service with streaming responses and citation of source chunks.</li>
+              <li>Build a RAGAS / DeepEval harness reporting faithfulness, answer relevance, and context precision.</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>GitHub repo + architecture diagram in the README.</li>
+              <li>Eval scorecard: faithfulness / relevance before vs after reranking.</li>
+              <li>Retrieval latency (p50/p95) and end-to-end answer latency.</li>
+              <li>A short demo querying the corpus live.</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>FastAPI</span><span>pgvector / Qdrant</span><span>LangChain</span><span>BM25</span><span>Cross-encoder</span><span>RAGAS</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Built an evaluated hybrid-retrieval RAG service (BM25 + dense, cross-encoder reranking) on pgvector, raising faithfulness from X to Y and serving answers at p95 &lt; Z ms.</q></div>
+      </div></div>
+    </article>
+
+    <!-- P1.2 -->
+    <article class="card" data-id="p1-2">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 02 / 15</div>
+          <h3>End-to-End Document Intelligence Pipeline</h3>
+          <p class="tagline">Turn the document-ingestion work you already do into a showable artifact: parse → chunk → extract → route, with structured outputs.</p>
+          <div class="badges">
+            <span class="badge effort">~2 weeks</span>
+            <span class="badge">Doc AI</span><span class="badge">Function Calling</span><span class="badge">Pipelines</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Parse mixed-format docs (PDF, scans, tables) with docling / unstructured; handle OCR fallback.</li>
+              <li>Compare chunking strategies (fixed, semantic, layout-aware) and justify your choice with eval.</li>
+              <li>Extract structured fields via function calling / structured outputs into a validated schema (Pydantic).</li>
+              <li>Add LLM-based task routing — classify each doc and dispatch to the right downstream handler.</li>
+              <li>Expose as an async FastAPI pipeline with a queue for batch ingestion.</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>Documents processed per hour / per day at steady state.</li>
+              <li>Field-extraction accuracy vs a hand-labelled set.</li>
+              <li>Manual hours replaced (your impact metric).</li>
+              <li>Schema + sample structured outputs in the repo.</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>docling / unstructured</span><span>Pydantic</span><span>FastAPI</span><span>Async queues</span><span>Structured outputs</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Engineered an async document-intelligence pipeline (parse → chunk → schema-validated extraction → LLM routing) processing N docs/day and replacing X hours/week of manual handling.</q></div>
+      </div></div>
+    </article>
+
+    <!-- P1.3 -->
+    <article class="card" data-id="p1-3">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 03 / 15</div>
+          <h3>Multi-Agent System with LangGraph</h3>
+          <p class="tagline">Move beyond linear chains to a stateful planner–executor–critic loop with tools, memory, and human-in-the-loop.</p>
+          <div class="badges">
+            <span class="badge effort">~2 weeks</span>
+            <span class="badge">Agents</span><span class="badge">LangGraph</span><span class="badge">Orchestration</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Model the workflow as a LangGraph state machine — define nodes, edges, and the shared state object.</li>
+              <li>Implement a planner that decomposes tasks, an executor with tool access, and a critic that grades and triggers retries.</li>
+              <li>Add persistent memory (short-term scratchpad + long-term store) and checkpointing.</li>
+              <li>Insert a human-in-the-loop interrupt for high-stakes steps.</li>
+              <li>Instrument every node with LangSmith tracing.</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>Rendered graph diagram of the agent topology.</li>
+              <li>Task success rate with vs without the critic loop.</li>
+              <li>Average steps / tool calls to completion.</li>
+              <li>Trace screenshots showing the reasoning path.</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>LangGraph</span><span>LangChain</span><span>LangSmith</span><span>Tool calling</span><span>Checkpointing</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Designed a stateful multi-agent system in LangGraph (planner / executor / critic with HITL), lifting task success rate from X% to Y% via self-correction.</q></div>
+      </div></div>
+    </article>
+
+    <!-- P1.4 -->
+    <article class="card" data-id="p1-4">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 04 / 15</div>
+          <h3>Custom MCP Server</h3>
+          <p class="tagline">You already list MCP — now ship one. A real Model Context Protocol server exposing tools to any LLM client. Few candidates have done this.</p>
+          <div class="badges">
+            <span class="badge effort">~1 week</span>
+            <span class="badge">MCP</span><span class="badge">Tool Design</span><span class="badge">Protocols</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Pick a useful domain (e.g. a geospatial-data tool or your document store) to expose.</li>
+              <li>Implement an MCP server exposing tools, resources, and prompts per the spec.</li>
+              <li>Handle auth, input validation, and structured error responses.</li>
+              <li>Connect it to an MCP-capable client and demo real tool calls end to end.</li>
+              <li>Document the tool contracts clearly in the README.</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>Published, installable MCP server repo.</li>
+              <li>Demo GIF of a client invoking your tools.</li>
+              <li>Clear tool/resource schema documentation.</li>
+              <li>Notes on design trade-offs you made.</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>MCP SDK</span><span>Python</span><span>JSON-RPC</span><span>Tool schemas</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Built and published a custom MCP server exposing domain tools to LLM clients, with validated schemas, auth, and structured error handling.</q></div>
+      </div></div>
+    </article>
+  </section>
+
+
+  <!-- ====================================================== -->
+  <!-- TIER 2 -->
+  <!-- ====================================================== -->
+  <section class="tier" data-t="2" id="tier2">
+    <div class="tier-head">
+      <div class="tier-num">02</div>
+      <div class="tier-meta">
+        <div class="tlabel">Tier 2 · Strong Résumé Builders</div>
+        <h2>Intermediate Projects</h2>
+        <p>These add rigor and breadth on top of the foundations — evaluation discipline, self-correcting retrieval, structured-data agents, and safety. They signal you think about quality, not just demos.</p>
+      </div>
+    </div>
+
+    <!-- P2.1 -->
+    <article class="card" data-id="p2-1">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 05 / 15</div>
+          <h3>LLM Evaluation &amp; Observability Dashboard</h3>
+          <p class="tagline">A dashboard that scores model outputs with LLM-as-judge + RAGAS metrics. Eval rigor is one of the highest hiring signals in 2026.</p>
+          <div class="badges">
+            <span class="badge effort">~1.5 weeks</span>
+            <span class="badge">Evaluation</span><span class="badge">Observability</span><span class="badge">LLM-as-Judge</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Define an eval dataset with reference answers for a task you own.</li>
+              <li>Implement LLM-as-judge scoring plus RAGAS metrics; calibrate the judge against human labels.</li>
+              <li>Pipe traces into Langfuse for latency, cost, and token tracking.</li>
+              <li>Build a Streamlit / React dashboard visualizing scores, regressions, and per-example drill-down.</li>
+              <li>Wire it so a new model/prompt version can be benchmarked in one run.</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>Judge-vs-human agreement rate (proves your eval is trustworthy).</li>
+              <li>Side-by-side model/prompt comparison view.</li>
+              <li>Cost &amp; latency per run, tracked over time.</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>RAGAS / DeepEval</span><span>Langfuse</span><span>Streamlit</span><span>LLM-as-judge</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Built an LLM evaluation harness and observability dashboard (LLM-as-judge + RAGAS, Langfuse traces) with judge-human agreement of X%, enabling one-click regression checks on new prompts.</q></div>
+      </div></div>
+    </article>
+
+    <!-- P2.2 -->
+    <article class="card" data-id="p2-2">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 06 / 15</div>
+          <h3>Corrective / Self-RAG with Retrieval Grading</h3>
+          <p class="tagline">Upgrade your RAG with self-correction — grade retrieved context, fall back to web search, and rewrite queries when confidence is low.</p>
+          <div class="badges">
+            <span class="badge effort">~1.5 weeks</span>
+            <span class="badge">CRAG / Self-RAG</span><span class="badge">Agentic RAG</span><span class="badge">Reflection</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Add a retrieval-grading node that judges whether retrieved chunks are relevant.</li>
+              <li>On low relevance, trigger query rewriting and/or a web-search fallback.</li>
+              <li>Add a self-reflection step that checks the draft answer against the context (hallucination guard).</li>
+              <li>Orchestrate the loop in LangGraph with a max-iteration cap.</li>
+              <li>Benchmark against your plain RAG baseline from Tier 1.</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>Hallucination rate: baseline RAG vs corrective RAG.</li>
+              <li>Answer quality lift on hard / out-of-corpus queries.</li>
+              <li>Added latency cost of the correction loop.</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>LangGraph</span><span>CRAG / Self-RAG</span><span>Web-search tool</span><span>Reflection</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Extended RAG with corrective retrieval grading, query rewriting, and self-reflection, cutting hallucinated answers by X% on out-of-corpus queries.</q></div>
+      </div></div>
+    </article>
+
+    <!-- P2.3 -->
+    <article class="card" data-id="p2-3">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 07 / 15</div>
+          <h3>Text-to-SQL Agent with Guardrails</h3>
+          <p class="tagline">A natural-language interface over a real database — with query validation, safety checks, and self-repair on failed queries.</p>
+          <div class="badges">
+            <span class="badge effort">~2 weeks</span>
+            <span class="badge">Text-to-SQL</span><span class="badge">Agents</span><span class="badge">Validation</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Feed schema + sample rows as context; generate SQL from natural language.</li>
+              <li>Add a validation layer: parse the SQL, enforce read-only, block dangerous operations.</li>
+              <li>Execute against a real DB; on error, feed the message back for self-repair.</li>
+              <li>Add few-shot examples and a semantic layer for ambiguous column names.</li>
+              <li>Evaluate on a labelled question→SQL set (e.g. Spider-style).</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>Execution accuracy on the eval set.</li>
+              <li>Self-repair success rate after first-attempt failures.</li>
+              <li>Zero unsafe queries reaching the DB (safety proof).</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>SQLGlot / parser</span><span>Postgres</span><span>Function calling</span><span>Few-shot</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Built a guarded text-to-SQL agent (schema-grounded generation, read-only validation, error self-repair) reaching X% execution accuracy with zero unsafe queries executed.</q></div>
+      </div></div>
+    </article>
+
+    <!-- P2.4 -->
+    <article class="card" data-id="p2-4">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 08 / 15</div>
+          <h3>Guardrails &amp; Safety Layer</h3>
+          <p class="tagline">A reusable defensive layer: prompt-injection detection, PII redaction, and output validation. Production teams care deeply about this.</p>
+          <div class="badges">
+            <span class="badge effort">~1.5 weeks</span>
+            <span class="badge">Guardrails</span><span class="badge">Safety</span><span class="badge">PII</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Build an input filter detecting prompt-injection and jailbreak patterns.</li>
+              <li>Add PII detection + redaction on both input and output.</li>
+              <li>Validate structured outputs against schemas; auto-reask on failure.</li>
+              <li>Add topical / toxicity guards with configurable policies.</li>
+              <li>Package as middleware that wraps any of your earlier projects.</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>Detection rate on an injection / jailbreak test set.</li>
+              <li>False-positive rate on benign inputs.</li>
+              <li>Drop-in middleware demonstrated on an earlier project.</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>Guardrails AI / NeMo</span><span>Presidio (PII)</span><span>Pydantic</span><span>Middleware</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Built a reusable LLM safety layer (injection detection, PII redaction, schema validation) catching X% of adversarial inputs at a Y% false-positive rate.</q></div>
+      </div></div>
+    </article>
+  </section>
+
+
+  <!-- ====================================================== -->
+  <!-- TIER 3 -->
+  <!-- ====================================================== -->
+  <section class="tier" data-t="3" id="tier3">
+    <div class="tier-head">
+      <div class="tier-num">03</div>
+      <div class="tier-meta">
+        <div class="tlabel">Tier 3 · Differentiators</div>
+        <h2>Advanced Projects</h2>
+        <p>This is where you separate from the pack: a niche only you can claim, real serving infrastructure, model customization, and cost engineering. Each one answers "what can this person do that others can't?"</p>
+      </div>
+    </div>
+
+    <!-- P3.1 -->
+    <article class="card" data-id="p3-1">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 09 / 15</div>
+          <h3>Multimodal Geospatial Verification <span style="color:var(--t3);font-family:var(--mono);font-size:.7em;letter-spacing:.1em">★ YOUR EDGE</span></h3>
+          <p class="tagline">Your single most memorable project. A VLM reasoning over aerial/building imagery + structured spatial data — nobody else's résumé has this.</p>
+          <div class="badges">
+            <span class="badge effort">~3 weeks</span>
+            <span class="badge">Multimodal</span><span class="badge">VLM</span><span class="badge">Geospatial</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Assemble a dataset of building / aerial imagery paired with spatial attributes.</li>
+              <li>Use a VLM (Qwen-VL, LLaVA, or Gemini) to analyze imagery and extract structured observations.</li>
+              <li>Fuse the visual findings with structured spatial data and have an LLM reason over the combination to verify / flag.</li>
+              <li>Build an agentic loop that requests another image or data point when confidence is low.</li>
+              <li>Evaluate against ground-truth labels; analyze failure modes.</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>Verification precision / recall vs ground truth.</li>
+              <li>Side-by-side examples of correct flags and edge cases.</li>
+              <li>A clear write-up of the multimodal architecture.</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>Qwen-VL / LLaVA / Gemini</span><span>Geospatial data</span><span>Agentic loop</span><span>OpenCV</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Built a multimodal geospatial verification agent fusing VLM image analysis with structured spatial data, achieving X% precision on building validation — a niche combining computer vision, LLM reasoning, and geospatial ML.</q></div>
+      </div></div>
+    </article>
+
+    <!-- P3.2 -->
+    <article class="card" data-id="p3-2">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 10 / 15</div>
+          <h3>Inference Optimization &amp; Model Serving</h3>
+          <p class="tagline">Serve an open model yourself, quantize it, benchmark it, and autoscale it — proving the infra depth your résumé currently only claims.</p>
+          <div class="badges">
+            <span class="badge effort">~2.5 weeks</span>
+            <span class="badge">vLLM</span><span class="badge">Quantization</span><span class="badge">Serving</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Serve an open model (Llama 3.x / Qwen) with vLLM; enable continuous batching.</li>
+              <li>Apply quantization (AWQ / GGUF) and measure the latency / memory / quality trade-off.</li>
+              <li>Load-test for throughput (req/s) and tail latency under concurrency.</li>
+              <li>Containerize with Docker and autoscale on Kubernetes.</li>
+              <li>Publish a benchmark report: tokens/s, p95 latency, cost per 1M tokens.</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>Throughput &amp; latency before vs after optimization.</li>
+              <li>Memory footprint reduction from quantization.</li>
+              <li>Cost-per-token vs a hosted API equivalent.</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>vLLM / TGI</span><span>AWQ / GGUF</span><span>Docker</span><span>Kubernetes</span><span>Locust</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Self-hosted and optimized an open LLM with vLLM + AWQ quantization, achieving N tokens/s at p95 &lt; X ms and cutting inference cost Y% versus a hosted API.</q></div>
+      </div></div>
+    </article>
+
+    <!-- P3.3 -->
+    <article class="card" data-id="p3-3">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 11 / 15</div>
+          <h3>Domain Fine-Tuning with LoRA / QLoRA</h3>
+          <p class="tagline">Customize a small model for a domain task and rigorously prove the lift over the base model. Shows you understand more than prompting.</p>
+          <div class="badges">
+            <span class="badge effort">~2 weeks</span>
+            <span class="badge">Fine-tuning</span><span class="badge">LoRA / QLoRA</span><span class="badge">PEFT</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Curate / format a domain instruction dataset (tie to agriculture or doc tasks).</li>
+              <li>Fine-tune a small base model with QLoRA via Unsloth or Axolotl.</li>
+              <li>Track experiments (hyperparameters, loss curves) in Weights &amp; Biases.</li>
+              <li>Evaluate base vs tuned on a held-out set with task-specific metrics.</li>
+              <li>Merge adapters and serve the tuned model (links to Project 10).</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>Base vs fine-tuned performance on your eval set.</li>
+              <li>Training cost (GPU-hours) and adapter size.</li>
+              <li>Model card documenting data, method, and limits.</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>Unsloth / Axolotl</span><span>PEFT / LoRA</span><span>Weights &amp; Biases</span><span>HuggingFace</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Fine-tuned a domain model with QLoRA, improving task accuracy from X to Y over the base model at under Z GPU-hours, with a full model card and held-out eval.</q></div>
+      </div></div>
+    </article>
+
+    <!-- P3.4 -->
+    <article class="card" data-id="p3-4">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 12 / 15</div>
+          <h3>Cost-Optimized LLM Router + Semantic Cache</h3>
+          <p class="tagline">Route queries to the cheapest capable model and cache semantically similar ones — a very production-minded project with a hard dollar payoff.</p>
+          <div class="badges">
+            <span class="badge effort">~1.5 weeks</span>
+            <span class="badge">Cost Opt</span><span class="badge">Routing</span><span class="badge">Caching</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Build a complexity classifier that routes easy queries to small/cheap models, hard ones to frontier models.</li>
+              <li>Add a semantic cache (GPTCache) that serves embedding-similar past queries.</li>
+              <li>Define a fallback chain for provider outages / rate limits.</li>
+              <li>Track cost, latency, and quality per route in a dashboard.</li>
+              <li>Run a realistic query mix and report total cost savings.</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>Total cost reduction vs always-frontier baseline.</li>
+              <li>Cache hit rate and latency saved.</li>
+              <li>Quality delta — proof routing didn't hurt answers.</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>GPTCache</span><span>Embeddings</span><span>Multi-provider</span><span>Router logic</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Built a cost-aware LLM router with semantic caching, cutting inference spend X% at a Y% cache hit rate with no measurable quality loss.</q></div>
+      </div></div>
+    </article>
+  </section>
+
+
+  <!-- ====================================================== -->
+  <!-- TIER 4 -->
+  <!-- ====================================================== -->
+  <section class="tier" data-t="4" id="tier4">
+    <div class="tier-head">
+      <div class="tier-num">04</div>
+      <div class="tier-meta">
+        <div class="tlabel">Tier 4 · Top 1–5% Candidate Level</div>
+        <h2>Elite Projects</h2>
+        <p>Full production systems almost no one at the early-career stage has actually shipped. Land even one of these convincingly and you stop competing with the field — you define a different bracket.</p>
+      </div>
+    </div>
+
+    <!-- P4.1 -->
+    <article class="card" data-id="p4-1">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 13 / 15</div>
+          <h3>End-to-End LLMOps Platform</h3>
+          <p class="tagline">The capstone. Tie prompt versioning, eval-in-CI, monitoring, drift detection, and cost tracking into one operated system. LLMOps is the highest-demand, lowest-supply skill right now.</p>
+          <div class="badges">
+            <span class="badge effort">~4 weeks</span>
+            <span class="badge">LLMOps</span><span class="badge">CI/CD</span><span class="badge">Monitoring</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Version prompts and configs as code; treat them like deployable artifacts.</li>
+              <li>Gate deploys on automated evals in CI — block regressions before they ship.</li>
+              <li>Instrument production with Langfuse: latency, cost, token, and quality monitoring.</li>
+              <li>Add drift detection on inputs and output-quality, with alerting.</li>
+              <li>Wire continuous-improvement loops: flagged outputs feed back into eval sets.</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>A working CI pipeline that fails on eval regression.</li>
+              <li>Live dashboards for cost / latency / quality.</li>
+              <li>Documented incident → alert → rollback flow.</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>GitHub Actions</span><span>Langfuse</span><span>Prompt versioning</span><span>Eval-in-CI</span><span>Drift detection</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Built an end-to-end LLMOps pipeline — prompt versioning, eval-gated CI/CD, production monitoring and drift detection — preventing regressions and tracking cost / quality across releases.</q></div>
+      </div></div>
+    </article>
+
+    <!-- P4.2 -->
+    <article class="card" data-id="p4-2">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 14 / 15</div>
+          <h3>Real-Time Voice / Streaming Agent</h3>
+          <p class="tagline">A low-latency spoken assistant: speech-to-text → RAG/agent → text-to-speech, streaming end to end. Hard to get right, which is exactly why it impresses.</p>
+          <div class="badges">
+            <span class="badge effort">~3 weeks</span>
+            <span class="badge">Voice</span><span class="badge">Streaming</span><span class="badge">Real-Time</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Stream microphone audio to STT (Whisper / streaming ASR) with partial transcripts.</li>
+              <li>Route the transcript into your RAG or agent pipeline with streaming token output.</li>
+              <li>Stream the response into TTS so the user hears speech as it generates.</li>
+              <li>Engineer for low end-to-end latency: overlap stages, handle interruptions / barge-in.</li>
+              <li>Deploy over WebSockets / WebRTC and measure time-to-first-audio.</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>End-to-end voice latency (time to first audio).</li>
+              <li>Interrupt / barge-in handling demo.</li>
+              <li>Live recorded demo of a full spoken exchange.</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>Whisper / streaming ASR</span><span>TTS</span><span>WebSockets / WebRTC</span><span>Async streaming</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Built a real-time voice agent (streaming STT → agent → TTS over WebRTC) with time-to-first-audio under X ms and interrupt handling.</q></div>
+      </div></div>
+    </article>
+
+    <!-- P4.3 -->
+    <article class="card" data-id="p4-3">
+      <div class="card-top">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="card-head">
+          <div class="pno">PROJECT 15 / 15</div>
+          <h3>Synthetic Data Generation Pipeline</h3>
+          <p class="tagline">Generate, filter, and validate high-quality synthetic datasets for fine-tuning and eval — the unglamorous skill that quietly powers everything else.</p>
+          <div class="badges">
+            <span class="badge effort">~2 weeks</span>
+            <span class="badge">Synthetic Data</span><span class="badge">Data Quality</span><span class="badge">Pipelines</span>
+          </div>
+        </div>
+        <div class="toggle">+</div>
+      </div>
+      <div class="body"><div class="body-inner">
+        <div class="grid2">
+          <div class="blk"><h4>Execution milestones</h4>
+            <ol class="steps">
+              <li>Design generation prompts that produce diverse, on-distribution examples.</li>
+              <li>Add seeding / persona variation to avoid mode collapse and repetition.</li>
+              <li>Build quality filters: dedup, toxicity, factuality, and difficulty grading.</li>
+              <li>Validate the dataset by fine-tuning on it (links to Project 11) and measuring lift.</li>
+              <li>Document provenance and quality stats for every batch.</li>
+            </ol>
+          </div>
+          <div class="blk"><h4>Deliverables &amp; metrics</h4>
+            <ul class="plain">
+              <li>Dataset size, diversity, and pass rate through filters.</li>
+              <li>Downstream model lift from synthetic vs no synthetic data.</li>
+              <li>Reusable, documented generation pipeline.</li>
+            </ul>
+            <h4 style="margin-top:18px">Stack</h4>
+            <div class="stack"><span>LLM generation</span><span>Dedup / filtering</span><span>Quality scoring</span><span>HuggingFace Datasets</span></div>
+          </div>
+        </div>
+        <div class="payoff"><div class="lab">Résumé line it unlocks</div>
+          <q>Built a synthetic-data generation and filtering pipeline, producing N validated examples that improved downstream fine-tuned model accuracy by X%.</q></div>
+      </div></div>
+    </article>
+  </section>
+
+
+  <!-- ============ CLOSING ============ -->
+  <section class="close">
+    <div class="kicker">The honest north star</div>
+    <h2>Depth beats breadth. Numbers beat adjectives.</h2>
+    <p>Three projects finished to production quality — real repos, real metrics, real demos — will out-interview ten half-built ones every single time.</p>
+    <p>Capture the numbers as you build. They are the difference between a résumé that gets skimmed and one that gets shortlisted.</p>
+  </section>
+
+  <footer>
+    BUILT FOR <b>SATHISH&nbsp;R</b> · GENERATIVE&nbsp;AI / AI&nbsp;ENGINEER TRACK · 15&nbsp;PROJECTS&nbsp;·&nbsp;4&nbsp;TIERS<br>
+    Progress saves locally in this file · revisit and update as you ship.
+  </footer>
+</div>
+
+<script>
+(function(){
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.card'));
+  var TOTAL = cards.length;
+  var KEY = 'sathish_ai_roadmap_progress_v1';
+  var state = {};
+
+  // load saved state (works when file is saved locally; silently no-ops in sandboxed preview)
+  try{ var raw = localStorage.getItem(KEY); if(raw){ state = JSON.parse(raw) || {}; } }catch(e){ state = {}; }
+
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+  function updateProgress(){
+    var done = 0;
+    cards.forEach(function(c){ if(state[c.dataset.id]) done++; });
+    var pct = TOTAL ? Math.round(done/TOTAL*100) : 0;
+    document.getElementById('barFill').style.width = pct + '%';
+    document.getElementById('doneN').textContent = done;
+    document.getElementById('pctN').textContent = pct + '%';
+  }
+
+  cards.forEach(function(card){
+    var id = card.dataset.id;
+    var top = card.querySelector('.card-top');
+    var check = card.querySelector('.check');
+    var body = card.querySelector('.body');
+
+    if(state[id]) card.classList.add('done');
+
+    function setBody(){
+      if(card.classList.contains('open')){
+        body.style.maxHeight = body.scrollHeight + 'px';
+      } else {
+        body.style.maxHeight = '0px';
+      }
+    }
+
+    // toggle expand/collapse when clicking the row (but not the checkbox)
+    top.addEventListener('click', function(e){
+      if(check.contains(e.target)) return;
+      card.classList.toggle('open');
+      setBody();
+    });
+
+    // checkbox toggles completion
+    check.addEventListener('click', function(e){
+      e.stopPropagation();
+      state[id] = !state[id];
+      card.classList.toggle('done', !!state[id]);
+      save();
+      updateProgress();
+    });
+
+    // keep open cards correctly sized on resize
+    window.addEventListener('resize', function(){ if(card.classList.contains('open')) setBody(); });
+  });
+
+  updateProgress();
+
+  // scroll-reveal for cards
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); }
+      });
+    }, {threshold:0.12});
+    cards.forEach(function(c){ io.observe(c); });
+  } else {
+    cards.forEach(function(c){ c.classList.add('in'); });
+  }
+})();
+</script>
+</body>
+</html>

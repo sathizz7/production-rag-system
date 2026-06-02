@@ -12,7 +12,7 @@
 
 Build a thin, explicitly-coded hybrid-RAG core on a single Postgres + pgvector store, route every model call through LiteLLM with Gemini as the default, and hide each subsystem behind a stable interface so four marquee features phase in without rewrites. Each phase ships as a complete artifact with a résumé-grade metric. A hard stop-line at every phase boundary guarantees the repo is never half-built.
 
-The four marquee features, layered on the core: **eval-in-CI**, **corrective/self-reflective RAG**, **multi-source + incremental ingestion**, and a **light geospatial-metadata edge**.
+The four marquee features, layered on the core: **eval-in-CI**, **corrective/self-reflective RAG**, **multi-source + incremental ingestion**, and a **light geospatial-metadata edge**. Observability and monitoring are a first-class concern throughout (Level B — see §12).
 
 ## 2. Goals and non-goals
 
@@ -27,7 +27,7 @@ The four marquee features, layered on the core: **eval-in-CI**, **corrective/sel
 
 - Full VLM-over-imagery pipeline → **P09** (this repo carries only a light geospatial-metadata layer).
 - Kubernetes autoscaling and self-hosted model serving → **P10**.
-- A full LLMOps control plane (drift, prompt registry UI) → **P13**; this repo seeds it with eval-in-CI and versioned prompts.
+- A full LLMOps control plane (drift detection, threshold alerting, prompt registry UI) → **P13**; this repo seeds it with eval-in-CI, versioned prompts, service metrics, and online quality scores.
 - A standalone guardrails/safety product → **P08**.
 
 ## 3. Context and the scope decision
@@ -50,6 +50,7 @@ We resolved the tension in favor of the roadmap's "depth beats breadth" north st
 | Hybrid fusion | Reciprocal Rank Fusion (RRF) | Rank-based; no score-normalization headaches |
 | Rerank | Cohere Rerank via `litellm.rerank()`; local `bge-reranker-v2-m3` swap | Gemini has no first-class rerank API |
 | Orchestration | LangGraph only for the Phase-2 corrective loop | A state machine earns its place in a cyclic graph, nowhere else |
+| Observability & monitoring | Level B — Langfuse tracing + Prometheus/Grafana service metrics + online sampled quality scoring | Honors the `notes.txt` priority; covers LLM-native and SRE-style monitoring; alerting + drift stay in P13 |
 
 ## 5. Architecture and data flow
 
@@ -99,6 +100,8 @@ QUERY PATH  (online / sync-streaming — the "read" side)
 
 CROSS-CUTTING
   • Observability: Langfuse traces every node (latency / tokens / $ / quality) via LiteLLM callback
+  • Monitoring: Prometheus /metrics + Grafana (req rate · p50/p95/p99 · errors · $/day);
+                online sampled quality scoring (faithfulness/groundedness on live traffic → Langfuse)
   • Provider seam: LiteLLM (generation · embedding · rerank), swap by config string
   • Config: pydantic-settings, one typed Settings object
   • Eval harness: golden set → RAGAS metrics  ──[Phase 1]──► runs as CI gate
@@ -187,15 +190,15 @@ Each phase is a finished, demoable artifact with a number. Start phase N+1 only 
 
 ### Phase 0 — Core flagship / MVP · ~1.5–2 weeks
 
-- **Ships:** PDF ingest (parse + tables + OCR fallback) → clean → chunk → embed → Postgres+pgvector upsert (metadata + FTS) → hybrid retrieve (dense+FTS, RRF) → Cohere rerank → context assembly with citations → streaming cited answers over FastAPI SSE → Langfuse traces → `docker compose up` (api + postgres + langfuse) → README with architecture diagram. Plus a 30–50 item golden set and a local `make eval` scorecard.
-- **Done when:** one-command up, one-command ingest, ask a question → cited streamed answer; `make eval` prints RAGAS + retrieval metrics.
+- **Ships:** PDF ingest (parse + tables + OCR fallback) → clean → chunk → embed → Postgres+pgvector upsert (metadata + FTS) → hybrid retrieve (dense+FTS, RRF) → Cohere rerank → context assembly with citations → streaming cited answers over FastAPI SSE → Langfuse traces + a Prometheus `/metrics` endpoint → `docker compose up` (api + postgres + langfuse + prometheus + grafana) → README with architecture diagram. Plus a 30–50 item golden set and a local `make eval` scorecard.
+- **Done when:** one-command up, one-command ingest, ask a question → cited streamed answer; `make eval` prints RAGAS + retrieval metrics; the Langfuse trace and the Grafana dashboard both render.
 - **Unlocks:** "Hybrid + cross-encoder rerank raised faithfulness X→Y and context-precision A→B; retrieval p95 < Z ms," plus a clean before/after rerank-lift number.
 
 ### Phase 1 — Eval-in-CI quality gate · ~3–5 days
 
-- **Ships:** `make eval` promoted into GitHub Actions over a frozen mini-corpus + golden set; committed baseline thresholds; CI fails on faithfulness/precision regression and posts the scorecard as a PR comment; judge model pinned at temperature 0; a small human-labeled slice calibrates the judge.
-- **Done when:** a PR that worsens retrieval turns CI red with a diffed scorecard.
-- **Unlocks:** "Eval-gated CI blocking quality regressions; judge-vs-human agreement X%." The strongest LLMOps signal and the dock for P13.
+- **Ships:** `make eval` promoted into GitHub Actions over a frozen mini-corpus + golden set; committed baseline thresholds; CI fails on faithfulness/precision regression and posts the scorecard as a PR comment; judge model pinned at temperature 0; a small human-labeled slice calibrates the judge. Also adds **online sampled quality scoring** — a configurable percentage of live queries get the cheap faithfulness judge, logged to Langfuse and surfaced on the dashboards (extended with the groundedness signal once Phase 2 lands).
+- **Done when:** a PR that worsens retrieval turns CI red with a diffed scorecard; sampled live queries show a quality score in Langfuse.
+- **Unlocks:** "Eval-gated CI blocking quality regressions; judge-vs-human agreement X%; answer quality monitored on live traffic." The strongest LLMOps signal and the dock for P13.
 
 ### Phase 2 — Corrective/self-reflective RAG + adaptive routing · ~1–1.5 weeks
 
@@ -238,6 +241,8 @@ Each phase is a finished, demoable artifact with a number. Start phase N+1 only 
 | API | FastAPI + uvicorn + sse-starlette, Pydantic v2 | Async streaming + typed contracts |
 | Config | pydantic-settings | One typed Settings object; 12-factor |
 | Observability | Langfuse (self-hosted) + structlog | Per-node cost/tokens/latency/quality via LiteLLM callback |
+| Service metrics | prometheus-client (`/metrics`) + Prometheus + Grafana | SRE view: request rate, latency percentiles, error rate, $/day; complements Langfuse's call-level view |
+| Online quality | Sampled live faithfulness/groundedness judge → Langfuse | Watches answer quality on real traffic, not just offline eval |
 | Eval | RAGAS + custom hit@k/MRR/nDCG | Standard RAG metrics + retrieval metrics RAGAS omits |
 | Ingest worker (P3) | arq (async Redis queue) or APScheduler for MVP | Light; Celery noted as scale-path, not built |
 | Demo UI | Minimal static HTML/JS chat hitting SSE | Zero build; shows streaming + citations |
@@ -258,10 +263,11 @@ Each phase is a finished, demoable artifact with a number. Start phase N+1 only 
 production-rag/
 ├── README.md              # problem → arch diagram → RESULTS scorecard → 1-cmd quickstart → demo
 ├── pyproject.toml · uv.lock · Makefile · .env.example
-├── docker-compose.yml · Dockerfile        # api · postgres+pgvector · langfuse · (worker·redis P3)
+├── docker-compose.yml · Dockerfile        # api · postgres+pgvector · langfuse · prometheus · grafana · (worker·redis P3)
 ├── .github/workflows/  ci.yml (lint·type·unit·integration)   eval.yml (Phase-1 gate + PR scorecard)
 ├── docs/  architecture.md · decisions/ (ADR-lite) · superpowers/specs/<this spec>
 ├── eval/  golden_set.yaml (Q · reference · relevant-doc-ids)   baselines/ (committed thresholds)
+├── monitoring/  prometheus.yml · grafana/ (dashboard json)
 ├── src/rag/
 │   ├── config.py              # pydantic-settings Settings
 │   ├── models.py              # Document · Chunk · ScoredChunk · Citation · Answer
@@ -274,8 +280,8 @@ production-rag/
 │   ├── generation/  assembler.py · answerer.py · prompts/ (versioned)
 │   ├── corrective/ [P2]  grader.py · rewriter.py · websearch.py · groundedness.py · router.py · graph.py
 │   ├── eval/  metrics.py (RAGAS + hit@k/MRR/nDCG) · runner.py
-│   ├── observability/  tracing.py (langfuse + structlog + LiteLLM callback)
-│   └── api/  app.py · routes.py (/query SSE · /ingest · /healthz) · schemas.py
+│   ├── observability/  tracing.py (langfuse + structlog + LiteLLM callback) · metrics.py (prometheus) · online_quality.py
+│   └── api/  app.py · routes.py (/query SSE · /ingest · /healthz · /metrics) · schemas.py
 ├── workers/ [P3]  arq incremental-ingest worker
 ├── ui/            minimal static chat page (SSE + citations)
 └── tests/  unit/ (fakes, no net) · integration/ (testcontainers pgvector + respx) · conftest.py
@@ -291,7 +297,16 @@ mypy strict · ruff lint+format · pre-commit · 12-factor config · structlog w
 - **Integration** — testcontainers boots a real Postgres+pgvector; verifies upsert idempotency, incremental re-index, and dense/lexical/hybrid retrieval over seeded data. respx mocks all LiteLLM/Cohere/Tavily HTTP, so CI spends nothing.
 - **Eval-as-gate (P1)** — the golden-set eval runs in its own workflow over a frozen mini-corpus, judge pinned at temperature 0, for reproducible red/green.
 
-## 12. Failure modes — designed in, not patched on
+## 12. Observability and monitoring
+
+This repo treats observability and monitoring as a first-class concern (Level B), across two complementary layers, and leaves the heavy control-plane parts to P13.
+
+- **Layer 1 — LLM-native (Langfuse).** The LiteLLM callback streams every model call into Langfuse: cost, tokens, latency, and quality scores, per node and per trace. Langfuse's dashboards give live cost/latency/quality views; curated screenshots become a README deliverable.
+- **Layer 2 — service-level (Prometheus + Grafana).** The FastAPI app exposes a Prometheus `/metrics` endpoint (request rate, p50/p95/p99 latency, error rate, and a $/day cost counter). Prometheus scrapes it; a small Grafana dashboard ships in docker-compose. This is the SRE-style view Langfuse does not cover, and a recognizable backend/infra signal.
+- **Online quality scoring.** Beyond offline eval, a configurable sample of live queries gets a cheap faithfulness judge (Phase 1), extended with the groundedness signal once Phase 2 lands. Scores log to Langfuse, so answer quality is watched on real traffic, not just in CI.
+- **Deferred to P13:** threshold alerting (Slack/webhook on latency/cost/hallucination spikes) and input/output drift detection. This repo leaves the seams — metrics, online scores, and traces — for P13 to consume.
+
+## 13. Failure modes — designed in, not patched on
 
 - **Ingestion:** per-doc try/except → failed docs land in a dead-letter table with a reason, the batch continues; OCR fallback on an empty text layer; idempotent upsert makes re-runs safe; the watermark makes a run resumable.
 - **Retrieval:** zero results or an empty filter → an explicit "no relevant context" path. Never hallucinate to fill silence.
@@ -300,22 +315,22 @@ mypy strict · ruff lint+format · pre-commit · 12-factor config · structlog w
 - **Corrective loop (P2):** a hard max-iteration cap prevents infinite loops; if confidence stays low, the system returns its best answer flagged low-confidence with citations, never a silent fabrication; the groundedness gate forces one regeneration or an honest "insufficient evidence."
 - **Measured, not assumed:** the golden set includes empty, adversarial, and out-of-corpus queries, so the failure paths are scored, not hoped for.
 
-## 13. The README as a deliverable
+## 14. The README as a deliverable
 
-problem → architecture diagram → results scorecard with the real numbers → one-command quickstart → key design decisions (the pgvector/RRF/BM25-honesty calls) → 60–90s demo. That sequence converts "another RAG repo" into "this person ships production systems."
+problem → architecture diagram → results scorecard with the real numbers → one-command quickstart → key design decisions (the pgvector/RRF/BM25-honesty calls) → curated Langfuse + Grafana dashboard shots → 60–90s demo. That sequence converts "another RAG repo" into "this person ships production systems."
 
-## 14. Implementation notes
+## 15. Implementation notes
 
 - **LiteLLM:** consult the current LiteLLM docs before writing the provider, embedding, rerank, Langfuse-callback, and Router code. Those APIs move; do not code them from memory.
 - **Gemini default:** the generation, grader/router/judge, and embedding models default to Gemini/Google, selected by config string so any provider swap is a one-line change.
 
-## 15. Open questions and risks
+## 16. Open questions and risks
 
 - **Corpus assembly** — pick the exact public ag/agronomy sources and licensing before Phase 0 (candidates: agricultural research papers, FAO/USDA reports, extension-service guides). Risk: licensing or download friction; mitigate by selecting open-access sources.
 - **Golden-set labeling effort** — 30–50 quality Q&A with reference answers and relevant-doc ids takes real time; budget for it inside Phase 0.
 - **Rerank cost** — Cohere Rerank adds per-query cost; the local `bge-reranker` swap caps it if needed.
 - **Gemini rate limits** — free-tier limits may throttle bulk embedding; LiteLLM Router retries/backoff plus batch sizing mitigate this.
 
-## 16. Out of scope (cross-references)
+## 17. Out of scope (cross-references)
 
-Heavy VLM multimodal → **P09** · model serving + K8s → **P10** · cost-router + semantic cache → **P12** · full LLMOps control plane → **P13** · standalone guardrails → **P08**. This repo leaves clean seams (LiteLLM Router, versioned prompts, eval-in-CI, the Retriever interface) for each.
+Heavy VLM multimodal → **P09** · model serving + K8s → **P10** · cost-router + semantic cache → **P12** · full LLMOps control plane (threshold alerting, drift detection, prompt registry UI) → **P13** · standalone guardrails → **P08**. This repo leaves clean seams for each: the LiteLLM Router, versioned prompts, eval-in-CI, the Prometheus metrics, the online quality scores, and the `Retriever` interface.

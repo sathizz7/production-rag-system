@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from rag.models import Completion
+from rag.models import Chunk, Completion, MetadataFilter, Provenance, ScoredChunk
 
 Vector = list[float]
 
@@ -39,3 +39,33 @@ class FakeLLMProvider:
             text=self.reply,
             usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
         )
+
+
+def make_chunk(chunk_id: str, text: str = "x") -> Chunk:
+    return Chunk(
+        chunk_id=chunk_id,
+        doc_id="d1",
+        source_uri="file:///x.pdf",
+        text=text,
+        ordinal=0,
+        page=1,
+        char_start=0,
+        char_end=len(text),
+        token_count=1,
+    )
+
+
+class FakeRetriever:
+    """Returns a fixed ScoredChunk list; records the args of the last call."""
+
+    def __init__(self, chunks: list[Chunk], provenance: Provenance = Provenance.dense) -> None:
+        self._chunks = chunks
+        self._provenance = provenance
+        self.last_call: tuple[str, int, MetadataFilter | None] | None = None
+
+    def retrieve(self, query: str, k: int, filt: MetadataFilter | None) -> list[ScoredChunk]:
+        self.last_call = (query, k, filt)
+        return [
+            ScoredChunk(chunk=c, score=1.0 / (i + 1), provenance=self._provenance)
+            for i, c in enumerate(self._chunks[:k])
+        ]

@@ -41,10 +41,10 @@ class FakeLLMProvider:
         )
 
 
-def make_chunk(chunk_id: str, text: str = "x") -> Chunk:
+def make_chunk(chunk_id: str, text: str = "x", doc_id: str | None = None) -> Chunk:
     return Chunk(
         chunk_id=chunk_id,
-        doc_id="d1",
+        doc_id=doc_id if doc_id is not None else chunk_id,
         source_uri="file:///x.pdf",
         text=text,
         ordinal=0,

@@ -84,3 +84,16 @@ class FakeReranker:
             ScoredChunk(chunk=c, score=float(len(reversed_chunks) - i), provenance=Provenance.rerank)  # noqa: E501
             for i, c in enumerate(reversed_chunks)
         ]
+
+
+class FakeStreamingLLM:
+    """Yields canned token deltas for stream(); complete() returns the joined text."""
+
+    def __init__(self, tokens: list[str] | None = None) -> None:
+        self.tokens = tokens if tokens is not None else ["Answer ", "grounded ", "[1]."]
+
+    def stream(self, messages: list[dict], **opts: object):
+        yield from self.tokens
+
+    def complete(self, messages: list[dict], **opts: object) -> Completion:
+        return Completion(text="".join(self.tokens), usage={"total_tokens": 0})

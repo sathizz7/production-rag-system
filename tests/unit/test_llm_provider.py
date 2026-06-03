@@ -36,3 +36,29 @@ def test_complete_survives_cost_failure(monkeypatch) -> None:
 
     result = LiteLLMProvider(model="m").complete([{"role": "user", "content": "hi"}])
     assert result.usage["cost_usd"] is None
+
+
+def test_litellm_provider_stream_yields_content_deltas(monkeypatch) -> None:
+    import litellm
+
+    from rag.providers.llm import LiteLLMProvider
+
+    class _Delta:
+        def __init__(self, content):
+            self.content = content
+
+    class _Choice:
+        def __init__(self, content):
+            self.delta = _Delta(content)
+
+    class _Chunk:
+        def __init__(self, content):
+            self.choices = [_Choice(content)]
+
+    def fake_completion(**kwargs):
+        assert kwargs["stream"] is True
+        return iter([_Chunk("Nitro"), _Chunk("gen"), _Chunk(None), _Chunk(" helps.")])
+
+    monkeypatch.setattr(litellm, "completion", fake_completion)
+    provider = LiteLLMProvider(model="gemini/gemini-2.5-pro")
+    assert list(provider.stream([{"role": "user", "content": "q"}])) == ["Nitro", "gen", " helps."]

@@ -27,3 +27,13 @@ def _doc(page_texts: list[str]) -> Document:
         uri="file:///x.pdf",
         pages=[Page(number=i + 1, text=t) for i, t in enumerate(page_texts)],
     )
+
+
+def test_answer_events_carry_discriminator_type() -> None:
+    from rag.models import DoneEvent, ErrorEvent, TokenEvent
+
+    assert TokenEvent(text="hi").type == "token"
+    assert DoneEvent(answer="a").type == "done"
+    assert ErrorEvent(message="boom").type == "error"
+    # round-trips as JSON for SSE payloads
+    assert TokenEvent(text="hi").model_dump_json() == '{"type":"token","text":"hi"}'

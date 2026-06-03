@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import litellm
 
 from rag.models import Completion
 
 
 class LiteLLMProvider:
-    """Non-streaming completion via LiteLLM (P0a). Streaming is added in P0b."""
+    """Non-streaming ``complete`` for graders/JSON; ``stream`` for the SSE answer path."""
 
     def __init__(
         self, model: str, temperature: float = 0.0, max_tokens: int = 1024
@@ -30,6 +32,19 @@ class LiteLLMProvider:
             "cost_usd": self._safe_cost(resp),
         }
         return Completion(text=text, usage=usage)
+
+    def stream(self, messages: list[dict[str, object]], **opts: object) -> Iterator[str]:
+        resp = litellm.completion(
+            model=self.model,
+            messages=messages,
+            temperature=self._temperature,
+            max_tokens=self._max_tokens,
+            stream=True,
+        )
+        for chunk in resp:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield delta
 
     @staticmethod
     def _safe_cost(resp: object) -> float | None:

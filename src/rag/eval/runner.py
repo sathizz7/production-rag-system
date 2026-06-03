@@ -165,7 +165,7 @@ def _run_live(golden_path: Path, corpus_dir: Path) -> str:
     # ISOLATION: eval writes its OWN database; it must never touch the app/dev DB.
     eval_url = settings.eval_database_url
     if not eval_url:
-        raise SystemExit("EVAL_DATABASE_URL is unset — create a dedicated rag_eval DB first.")
+        raise SystemExit("EVAL_DATABASE_URL is unset - create a dedicated rag_eval DB first.")
     if eval_url == settings.database_url:
         raise SystemExit("EVAL_DATABASE_URL must differ from DATABASE_URL (no app-DB pollution).")
 
@@ -193,14 +193,16 @@ def _run_live(golden_path: Path, corpus_dir: Path) -> str:
         rrf_k=settings.rrf_k,
         candidate_k=settings.candidate_k,
     )
-    judge = FaithfulnessJudge(LiteLLMProvider(model=settings.grader_model, max_tokens=256))
+    # gemini-2.5-flash is a "thinking" model: a small budget is consumed by reasoning
+    # and leaves no JSON, scoring 0. Give the judge headroom (verified: 256 -> 0.0, 2048 -> 1.0).
+    judge = FaithfulnessJudge(LiteLLMProvider(model=settings.grader_model, max_tokens=2048))
     items = load_golden_set(golden_path)
     k = settings.retrieval_k
 
     # A/B: rerank lift = swap the base retriever. Both answerers are rerank-agnostic.
     baseline = evaluate(items, hybrid, _build_answerer(hybrid, settings), judge, k=k)
     out = [
-        "# SMOKE EVAL — harness validation (small n; read the ALL row).",
+        "# SMOKE EVAL - harness validation (small n; read the ALL row).",
         "# The statistically-honest 30-50 item stratified set is a Phase-1 gate.",
         "",
         "## Baseline: hybrid (dense + lexical, RRF), no rerank",
@@ -225,7 +227,7 @@ def _run_live(golden_path: Path, corpus_dir: Path) -> str:
     else:
         out += [
             "",
-            "(rerank A/B skipped — set RERANK_ENABLED=true + COHERE_API_KEY to measure lift)",
+            "(rerank A/B skipped - set RERANK_ENABLED=true + COHERE_API_KEY to measure lift)",
         ]
     return "\n".join(out)
 

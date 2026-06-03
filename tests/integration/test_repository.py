@@ -63,6 +63,27 @@ def test_soft_delete_tombstones_document_and_chunks(clean_db: Engine) -> None:
     assert live == 0
 
 
+def test_reingest_with_fewer_chunks_tombstones_tail(clean_db: Engine) -> None:
+    """Re-ingesting with fewer chunks must soft-delete the removed tail ordinals."""
+    repo = PgChunkRepository(clean_db)
+
+    # First ingest: 3 chunks (ordinals 0, 1, 2)
+    chunks_3 = [_chunk("d1", 0), _chunk("d1", 1), _chunk("d1", 2)]
+    vectors_3 = [_vec(0.1, 0.2, 0.3), _vec(0.4, 0.5, 0.6), _vec(0.7, 0.8, 0.9)]
+    repo.upsert(chunks_3, vectors_3)
+
+    # Re-ingest: only 1 chunk (ordinal 0); tail ordinals 1 and 2 must be tombstoned
+    chunks_1 = [_chunk("d1", 0)]
+    vectors_1 = [_vec(0.1, 0.2, 0.3)]
+    repo.upsert(chunks_1, vectors_1)
+
+    with clean_db.connect() as conn:
+        live = conn.execute(
+            text("SELECT count(*) FROM chunks WHERE doc_id='d1' AND deleted_at IS NULL")
+        ).scalar_one()
+    assert live == 1
+
+
 def test_watermark_roundtrip(clean_db: Engine) -> None:
     repo = PgChunkRepository(clean_db)
     assert repo.get_watermark("s1") is None

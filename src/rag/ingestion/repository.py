@@ -14,7 +14,13 @@ Vector = list[float]
 
 
 class PgChunkRepository:
-    """The only component that touches Postgres. Idempotent via content_hash/ordinal."""
+    """The only component that touches Postgres. Idempotent via content_hash/ordinal.
+
+    Re-ingest is safe for both growth and shrinkage: newly-added ordinals are
+    inserted, changed ordinals are updated (deleted_at reset to None), and
+    removed tail ordinals (ordinal >= new chunk count) are soft-deleted so
+    they are no longer retrievable.
+    """
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
@@ -99,6 +105,18 @@ class PgChunkRepository:
                     )
                     conn.execute(chunk_stmt)
                     stats.chunks_upserted += 1
+
+                # Tombstone any surviving tail chunks that were removed in this
+                # re-ingest (ordinal >= new chunk count, not already deleted).
+                conn.execute(
+                    chunks_t.update()
+                    .where(
+                        chunks_t.c.doc_id == doc_id,
+                        chunks_t.c.ordinal >= len(items),
+                        chunks_t.c.deleted_at.is_(None),
+                    )
+                    .values(deleted_at=now)
+                )
         return stats
 
     def soft_delete(self, doc_ids: list[str]) -> int:

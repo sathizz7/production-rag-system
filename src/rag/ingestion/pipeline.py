@@ -9,7 +9,7 @@ from rag.ingestion.clean import BasicCleaner
 from rag.ingestion.parse import PdfParser
 from rag.ingestion.repository import PgChunkRepository
 from rag.ingestion.sources.pdf import PdfSourceAdapter
-from rag.models import Chunk, UpsertStats
+from rag.models import Chunk, RawDocument, UpsertStats
 from rag.protocols import EmbeddingProvider
 
 log = structlog.get_logger()
@@ -44,7 +44,7 @@ class IngestionPipeline:
             total.chunks_upserted += stats.chunks_upserted
         return total
 
-    def _ingest_one(self, raw) -> UpsertStats:  # type: ignore[no-untyped-def]
+    def _ingest_one(self, raw: RawDocument) -> UpsertStats:
         doc = self._cleaner.clean(self._parser.parse(raw))
         chunks: list[Chunk] = self._chunker.chunk(doc)
         if not chunks:

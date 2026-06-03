@@ -28,7 +28,9 @@ class PdfSourceAdapter:
             )
 
     def _iter_pdf_files(self) -> Iterator[Path]:
-        for p in self._paths:
+        for raw_path in self._paths:
+            # Resolve relative inputs to absolute so Path.as_uri() works downstream.
+            p = raw_path if raw_path.is_absolute() else raw_path.resolve()
             if p.is_dir():
                 yield from sorted(p.rglob("*.pdf"))
             elif p.suffix.lower() == ".pdf":

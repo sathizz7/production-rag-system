@@ -23,9 +23,11 @@ env/
 .coverage
 htmlcov/
 
-# Data & artifacts — corpus and generated indexes stay out of git
+# Data & artifacts — corpus and generated indexes stay out of git (any location)
 data/raw/
 data/processed/
+**/data/raw/
+**/data/processed/
 *.db
 *.sqlite3
 

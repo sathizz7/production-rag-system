@@ -1,12 +1,17 @@
 import os
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Resolve .env at the project root so the app works from any working directory
+# (e.g. when run from src/). This file is src/rag/config.py → parents[2] is root.
+_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=str(_ENV_FILE), env_file_encoding="utf-8", extra="ignore"
     )
 
     # Secrets / infra
@@ -30,7 +35,7 @@ class Settings(BaseSettings):
 
     # Generation
     generation_temperature: float = 0.0
-    generation_max_tokens: int = 1024
+    generation_max_tokens: int = 4096  # headroom for gemini-2.5 "thinking" + the answer
 
 
 @lru_cache

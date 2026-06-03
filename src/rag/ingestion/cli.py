@@ -19,6 +19,10 @@ def main() -> None:
     parser.add_argument("paths", nargs="+", type=Path, help="PDF files or directories")
     args = parser.parse_args()
 
+    missing = [str(p) for p in args.paths if not p.exists()]
+    if missing:
+        log.warning("paths_not_found", paths=missing, cwd=str(Path.cwd()))
+
     settings = get_settings()
     apply_provider_env(settings)
     engine = get_engine(settings.database_url)
@@ -31,6 +35,12 @@ def main() -> None:
         overlap=settings.chunk_overlap,
     )
     stats = pipeline.ingest_paths(args.paths)
+    if stats.documents_upserted == 0:
+        log.warning(
+            "no_documents_ingested",
+            hint="no readable PDFs found at the given path(s)",
+            resolved=[str(p.resolve()) for p in args.paths],
+        )
     log.info("ingest_complete", documents=stats.documents_upserted, chunks=stats.chunks_upserted)
 
 

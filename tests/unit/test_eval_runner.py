@@ -63,3 +63,30 @@ def test_evaluate_produces_per_stratum_scores() -> None:
     assert by_stratum["easy"].faithfulness[0] == 0.9
     assert by_stratum["out_of_corpus"].n == 1
     assert by_stratum["ALL"].n == 2                        # aggregate pools every item
+
+
+def test_resolve_eval_url_requires_a_dedicated_database() -> None:
+    import pytest
+
+    from rag.config import Settings
+    from rag.eval.runner import _resolve_eval_url
+
+    with pytest.raises(SystemExit):  # unset → refuse (would otherwise wipe nothing/unknown)
+        _resolve_eval_url(Settings(_env_file=None, eval_database_url="", database_url="app"))
+    with pytest.raises(SystemExit):  # equals the app DB → refuse (guards DROP SCHEMA)
+        _resolve_eval_url(Settings(_env_file=None, eval_database_url="same", database_url="same"))
+    ok = _resolve_eval_url(
+        Settings(_env_file=None, eval_database_url="evalurl", database_url="appurl")
+    )
+    assert ok == "evalurl"
+
+
+def test_stem_from_uri_parses_filename_stem() -> None:
+    from rag.eval.runner import stem_from_uri
+    from rag.models import Provenance, ScoredChunk
+    from tests.unit.fakes import make_chunk
+
+    chunk = make_chunk("c0")
+    chunk.source_uri = "file:///D:/work-space/data/maize%20nitrogen.pdf"
+    sc = ScoredChunk(chunk=chunk, score=1.0, provenance=Provenance.dense)
+    assert stem_from_uri(sc) == "maize nitrogen"          # url-decoded stem, no extension

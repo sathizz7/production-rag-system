@@ -66,6 +66,9 @@ def create_app(answerer: StreamingAnswerer | None = None) -> FastAPI:
     async def _record_metrics(request: StarletteRequest, call_next):  # type: ignore[no-untyped-def]
         start = perf_counter()
         response = await call_next(request)
+        # Raw path as a label is safe for our fixed route set; if path-param routes are
+        # added later, switch to the matched route template to avoid Prometheus
+        # label-cardinality blow-up from unique paths / scanner traffic.
         endpoint = request.url.path
         from rag.observability import metrics
 

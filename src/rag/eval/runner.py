@@ -135,6 +135,21 @@ def _build_answerer(retriever: Retriever, settings: Settings) -> _Answerer:
     )
 
 
+def _resolve_eval_url(settings: Settings) -> str:
+    """Return the eval DB URL, refusing to proceed unless it is dedicated.
+
+    The runner ``DROP SCHEMA ... CASCADE`` s this database, so this guard is the only
+    thing standing between an eval run and wiping the app/dev DB. Raises SystemExit if
+    the eval URL is unset or equal to ``database_url``.
+    """
+    eval_url = settings.eval_database_url
+    if not eval_url:
+        raise SystemExit("EVAL_DATABASE_URL is unset - create a dedicated rag_eval DB first.")
+    if eval_url == settings.database_url:
+        raise SystemExit("EVAL_DATABASE_URL must differ from DATABASE_URL (no app-DB pollution).")
+    return eval_url
+
+
 def _run_live(golden_path: Path, corpus_dir: Path) -> str:
     """Wire real components, ingest the frozen corpus into the DEDICATED eval DB,
     then run a smoke eval — baseline (hybrid) vs hybrid+rerank A/B.
@@ -163,11 +178,7 @@ def _run_live(golden_path: Path, corpus_dir: Path) -> str:
     apply_provider_env(settings)
 
     # ISOLATION: eval writes its OWN database; it must never touch the app/dev DB.
-    eval_url = settings.eval_database_url
-    if not eval_url:
-        raise SystemExit("EVAL_DATABASE_URL is unset - create a dedicated rag_eval DB first.")
-    if eval_url == settings.database_url:
-        raise SystemExit("EVAL_DATABASE_URL must differ from DATABASE_URL (no app-DB pollution).")
+    eval_url = _resolve_eval_url(settings)
 
     reset = get_engine(eval_url)                 # reset the eval DB to empty, then migrate
     with reset.begin() as conn:

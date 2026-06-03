@@ -1,4 +1,5 @@
 import json
+import re
 
 import pytest
 from fastapi.testclient import TestClient
@@ -23,6 +24,22 @@ def _client() -> TestClient:
     return TestClient(create_app(answerer=answerer))
 
 
+def _parse_sse(body: str) -> list[tuple[str, dict]]:
+    """Parse SSE the way a browser client must — strip CR, split frames on \\n\\n.
+
+    sse-starlette frames are CRLF-separated (event: ...\\r\\ndata: ...\\r\\n\\r\\n);
+    a client that splits on a bare \\n\\n recovers nothing. This mirrors ui/index.html
+    so the framing contract the UI depends on is locked by a test.
+    """
+    events: list[tuple[str, dict]] = []
+    for frame in body.replace("\r", "").split("\n\n"):
+        ev = re.search(r"^event: (.*)$", frame, re.M)
+        data = re.search(r"^data: (.*)$", frame, re.M)
+        if ev and data:
+            events.append((ev.group(1), json.loads(data.group(1))))
+    return events
+
+
 def test_stream_endpoint_emits_token_then_done_events() -> None:
     stream_req = {"query": "is alpha true?"}
     with (
@@ -33,11 +50,12 @@ def test_stream_endpoint_emits_token_then_done_events() -> None:
         assert "text/event-stream" in resp.headers["content-type"]
         body = "".join(resp.iter_text())
 
-    # SSE frames: "event: <type>\ndata: <json>\n\n"
-    assert "event: token" in body
-    assert "event: done" in body
-    done_payload = body.split("event: done")[1].split("data: ")[1].splitlines()[0]
-    done = json.loads(done_payload)
+    events = _parse_sse(body)
+    types = [t for t, _ in events]
+    assert "token" in types and types[-1] == "done"        # tokens then a terminal done
+    tokens = "".join(p["text"] for t, p in events if t == "token")
+    assert tokens == "alpha is true [1]"                   # client reassembles the stream
+    done = next(p for t, p in events if t == "done")
     assert done["citations"][0]["chunk_id"] == "a"
     assert "[1]" in done["answer"]
 

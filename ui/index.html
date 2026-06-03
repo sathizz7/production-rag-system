@@ -38,7 +38,9 @@
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        // sse-starlette separates lines/frames with CRLF (\r\n\r\n). Strip CR so we
+        // can split frames on \n\n and the line regexes don't capture a trailing \r.
+        buffer += decoder.decode(value, { stream: true }).replace(/\r/g, "");
         const frames = buffer.split("\n\n");
         buffer = frames.pop();                       // keep the trailing partial frame
         for (const frame of frames) {

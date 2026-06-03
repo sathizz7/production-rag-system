@@ -1,0 +1,43 @@
+# SMOKE-EVAL golden set for the frozen mini-corpus in eval/corpus/*.md.
+# Purpose in P0b: prove the harness end-to-end. It is intentionally small, so
+# per-stratum confidence intervals are NOT meaningful — read the aggregate "ALL"
+# row (the runner adds it). The statistically-honest 30-50 item stratified set
+# (with a human calibration slice) is a Phase-1 deliverable (spec section 19).
+# relevant_doc_ids reference the corpus filename stem (e.g. "maize_nitrogen.md" -> "maize_nitrogen").
+# NOTE: no "metadata" stratum here — metadata-filtered retrieval is Phase 4.
+items:
+  - id: q1
+    question: How does nitrogen fertilizer affect maize yield?
+    reference_answer: Nitrogen fertilizer substantially increases maize yield up to an optimal rate.
+    relevant_doc_ids: ["maize_nitrogen"]
+    stratum: easy
+  - id: q2
+    question: What causes yield loss in wheat during drought?
+    reference_answer: Drought during grain filling reduces wheat yield by shortening the filling period.
+    relevant_doc_ids: ["wheat_drought"]
+    stratum: easy
+  - id: q3
+    question: Why is phosphorus important early in the season?
+    reference_answer: Phosphorus supports early root development and establishment.
+    relevant_doc_ids: ["phosphorus_roots"]
+    stratum: easy
+  - id: q4
+    question: Should I apply more nitrogen than the optimal rate to be safe?
+    reference_answer: No; beyond the optimal rate yield gains plateau while cost and losses rise.
+    relevant_doc_ids: ["maize_nitrogen"]
+    stratum: ambiguous
+  - id: q5
+    question: Does irrigation timing interact with nitrogen uptake?
+    reference_answer: Adequate soil moisture is needed for nitrogen uptake; timing matters.
+    relevant_doc_ids: ["irrigation_nitrogen"]
+    stratum: ambiguous
+  - id: q6
+    question: Is it true that adding potassium cures all drought damage in wheat?
+    reference_answer: No; the context does not support potassium curing drought damage.
+    relevant_doc_ids: ["wheat_drought"]
+    stratum: adversarial
+  - id: q7
+    question: What is the population of Tokyo?
+    reference_answer: I don't have relevant context to answer that.
+    relevant_doc_ids: []
+    stratum: out_of_corpus

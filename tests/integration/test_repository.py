@@ -7,6 +7,14 @@ from rag.models import Chunk, Watermark
 pytestmark = pytest.mark.integration
 
 
+def _vec(*head: float) -> list[float]:
+    """768-dim test vector from leading components (rest zero-padded)."""
+    v = [0.0] * 768
+    for i, x in enumerate(head):
+        v[i] = x
+    return v
+
+
 def _chunk(doc_id: str, ordinal: int) -> Chunk:
     return Chunk(
         chunk_id=f"{doc_id}-c{ordinal}",
@@ -22,14 +30,14 @@ def _chunk(doc_id: str, ordinal: int) -> Chunk:
         chunker_name="fixed",
         chunker_version="1",
         embedding_model="fake",
-        embedding_dim=3,
+        embedding_dim=768,
     )
 
 
 def test_upsert_is_idempotent(clean_db: Engine) -> None:
     repo = PgChunkRepository(clean_db)
     chunks = [_chunk("d1", 0), _chunk("d1", 1)]
-    vectors = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
+    vectors = [_vec(0.1, 0.2, 0.3), _vec(0.4, 0.5, 0.6)]
 
     repo.upsert(chunks, vectors)
     repo.upsert(chunks, vectors)  # second run must not duplicate
@@ -43,7 +51,7 @@ def test_upsert_is_idempotent(clean_db: Engine) -> None:
 
 def test_soft_delete_tombstones_document_and_chunks(clean_db: Engine) -> None:
     repo = PgChunkRepository(clean_db)
-    repo.upsert([_chunk("d1", 0)], [[0.1, 0.2, 0.3]])
+    repo.upsert([_chunk("d1", 0)], [_vec(0.1, 0.2, 0.3)])
 
     deleted = repo.soft_delete(["d1"])
     assert deleted == 1

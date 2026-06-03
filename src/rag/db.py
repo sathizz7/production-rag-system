@@ -58,7 +58,7 @@ chunks = Table(
     Column("chunker_version", String, nullable=False),
     Column("embedding_model", String, nullable=False),
     Column("embedding_dim", Integer, nullable=False),
-    Column("embedding", Vector(), nullable=False),
+    Column("embedding", Vector(EMBEDDING_DIM), nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("deleted_at", DateTime(timezone=True), nullable=True),
     UniqueConstraint("doc_id", "ordinal", name="uq_chunks_doc_ordinal"),

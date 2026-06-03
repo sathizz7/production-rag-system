@@ -54,17 +54,15 @@ def upgrade() -> None:
         sa.Column("chunker_version", sa.String(), nullable=False),
         sa.Column("embedding_model", sa.String(), nullable=False),
         sa.Column("embedding_dim", sa.Integer(), nullable=False),
-        sa.Column("embedding", pgvector.sqlalchemy.Vector(), nullable=False),
+        sa.Column("embedding", pgvector.sqlalchemy.Vector(EMBEDDING_DIM), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.UniqueConstraint("doc_id", "ordinal", name="uq_chunks_doc_ordinal"),
     )
     op.create_index("ix_chunks_doc_id", "chunks", ["doc_id"])
     op.execute(
-        f"CREATE INDEX ix_chunks_embedding_hnsw ON chunks "
-        f"USING hnsw ((embedding::vector({EMBEDDING_DIM})) vector_cosine_ops) "
-        f"WITH (m = 16, ef_construction = 64) "
-        f"WHERE embedding_dim = {EMBEDDING_DIM}"
+        "CREATE INDEX ix_chunks_embedding_hnsw ON chunks "
+        "USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64)"
     )
 
     op.create_table(

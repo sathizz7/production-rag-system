@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
 from time import perf_counter
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from starlette.requests import Request as StarletteRequest
 
 from rag.api.routes import router
@@ -70,5 +72,9 @@ def create_app(answerer: StreamingAnswerer | None = None) -> FastAPI:
         metrics.REQUEST_LATENCY.labels(endpoint=endpoint).observe(perf_counter() - start)
         metrics.REQUESTS.labels(endpoint=endpoint, status=str(response.status_code)).inc()
         return response
+
+    ui_dir = Path(__file__).resolve().parents[3] / "ui"
+    if ui_dir.is_dir():
+        app.mount("/ui", StaticFiles(directory=str(ui_dir), html=True), name="ui")
 
     return app

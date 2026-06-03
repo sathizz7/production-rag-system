@@ -168,6 +168,18 @@ No Docker. If `TEST_DATABASE_URL` is unset the integration tests **skip** (not f
   ```
 - **`docker-compose.yml` / `Dockerfile`** — keep as written in Task 19 but label **optional (reviewers only)**; the `api` service points at its bundled `pgvector/pgvector:pg16` `postgres` service via `DATABASE_URL`. The author's primary path is local.
 
+### Override G — integration test vectors are 768-dim
+The `embedding` column is `vector(768)` with a **standard** HNSW index (`USING hnsw (embedding vector_cosine_ops)`). Do **not** make the column dimensionless or the index a partial/expression index — that would stop the dense query (Task 13) from using HNSW (silent seq-scan). Because the column is fixed at 768, **integration-test vectors must be 768-dim** and test chunks must set `embedding_dim=768`. Add this helper to each integration test module that builds vectors:
+```python
+def _vec(*head: float) -> list[float]:
+    """768-dim test vector from leading components (rest zero-padded)."""
+    v = [0.0] * 768
+    for i, x in enumerate(head):
+        v[i] = x
+    return v
+```
+Apply it to the literal vectors: Task 11 → `[_vec(0.1, 0.2, 0.3), _vec(0.4, 0.5, 0.6)]` and the single `[_vec(0.1, 0.2, 0.3)]`; Task 13 → mapping `{"near": _vec(1, 0, 0), "mid": _vec(0.7, 0.7, 0), "far": _vec(0, 0, 1), "QUERY": _vec(1, 0, 0)}` with `FakeEmbedder(dim=768)`. Zero-padding preserves cosine ordering, so Task 13's near/mid/far assertions are unchanged.
+
 ### Cosmetic
 The Goal's "behind `docker compose up`" and the Conventions "boot real Postgres via Docker" now read as local-first; treat Docker as the optional reviewer path throughout.
 

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from time import perf_counter
+
 from fastapi import FastAPI
+from starlette.requests import Request as StarletteRequest
 
 from rag.api.routes import router
 from rag.config import apply_provider_env, get_settings
@@ -56,4 +59,16 @@ def create_app(answerer: StreamingAnswerer | None = None) -> FastAPI:
     app = FastAPI(title="Production RAG — P0b")
     app.state.answerer = answerer if answerer is not None else _build_answerer()
     app.include_router(router)
+
+    @app.middleware("http")
+    async def _record_metrics(request: StarletteRequest, call_next):  # type: ignore[no-untyped-def]
+        start = perf_counter()
+        response = await call_next(request)
+        endpoint = request.url.path
+        from rag.observability import metrics
+
+        metrics.REQUEST_LATENCY.labels(endpoint=endpoint).observe(perf_counter() - start)
+        metrics.REQUESTS.labels(endpoint=endpoint, status=str(response.status_code)).inc()
+        return response
+
     return app

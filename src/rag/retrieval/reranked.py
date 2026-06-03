@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from rag.models import MetadataFilter, ScoredChunk
+from rag.observability.metrics import observe_stage
 from rag.protocols import Reranker, Retriever
 
 
@@ -26,4 +27,5 @@ class RerankedRetriever:
         scored = self._base.retrieve(query, pool, filt)
         if not scored:
             return []
-        return self._reranker.rerank(query, [s.chunk for s in scored], top_n=k)
+        with observe_stage("rerank"):
+            return self._reranker.rerank(query, [s.chunk for s in scored], top_n=k)

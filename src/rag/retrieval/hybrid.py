@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from rag.models import MetadataFilter, Provenance, ScoredChunk
+from rag.observability.metrics import observe_stage
 from rag.protocols import Retriever
 from rag.retrieval.fusion import reciprocal_rank_fusion
 
@@ -27,14 +28,17 @@ class HybridRetriever:
         self, query: str, k: int, filt: MetadataFilter | None
     ) -> list[ScoredChunk]:
         pool = max(k, self._candidate_k)
-        dense = self._dense.retrieve(query, pool, filt)
-        lexical = self._lexical.retrieve(query, pool, filt)
-        by_id = {sc.chunk.chunk_id: sc.chunk for sc in (*dense, *lexical)}
-        fused = reciprocal_rank_fusion(
-            [[sc.chunk.chunk_id for sc in dense], [sc.chunk.chunk_id for sc in lexical]],
-            k=self._rrf_k,
-        )
-        return [
-            ScoredChunk(chunk=by_id[chunk_id], score=score, provenance=Provenance.fused)
-            for chunk_id, score in fused[:k]
-        ]
+        with observe_stage("dense"):
+            dense = self._dense.retrieve(query, pool, filt)
+        with observe_stage("lexical"):
+            lexical = self._lexical.retrieve(query, pool, filt)
+        with observe_stage("fusion"):
+            by_id = {sc.chunk.chunk_id: sc.chunk for sc in (*dense, *lexical)}
+            fused = reciprocal_rank_fusion(
+                [[sc.chunk.chunk_id for sc in dense], [sc.chunk.chunk_id for sc in lexical]],
+                k=self._rrf_k,
+            )
+            return [
+                ScoredChunk(chunk=by_id[chunk_id], score=score, provenance=Provenance.fused)
+                for chunk_id, score in fused[:k]
+            ]

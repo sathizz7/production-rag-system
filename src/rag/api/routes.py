@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 from sse_starlette.sse import EventSourceResponse
 from starlette.concurrency import iterate_in_threadpool, run_in_threadpool
 
 from rag.api.schemas import QueryRequest, QueryResponse
+from rag.observability import metrics
 
 router = APIRouter()
 
@@ -37,3 +38,9 @@ async def query_stream(request: Request, body: QueryRequest) -> EventSourceRespo
             yield {"event": event.type, "data": event.model_dump_json()}
 
     return EventSourceResponse(event_publisher())
+
+
+@router.get("/metrics")
+async def metrics_endpoint() -> Response:
+    text, content_type = metrics.render_latest()
+    return Response(content=text, media_type=content_type)

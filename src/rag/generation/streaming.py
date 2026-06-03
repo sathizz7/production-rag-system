@@ -18,6 +18,7 @@ from rag.models import (
     RetrievalScope,
     TokenEvent,
 )
+from rag.observability.metrics import observe_stage
 from rag.protocols import LLMProvider, Retriever
 from rag.util.tokens import count_tokens
 
@@ -79,16 +80,18 @@ class StreamingAnswerer:
             return
 
         chunks = [s.chunk for s in scored]
-        context = self._assembler.assemble(query, chunks, self._token_budget)
+        with observe_stage("assemble"):
+            context = self._assembler.assemble(query, chunks, self._token_budget)
         messages: list[dict[str, object]] = [
             {"role": "user", "content": self._prompt.format(context=context.text, question=query)}
         ]
 
         parts: list[str] = []
         try:
-            for delta in self._llm.stream(messages):
-                parts.append(delta)
-                yield TokenEvent(text=delta)
+            with observe_stage("generate"):
+                for delta in self._llm.stream(messages):
+                    parts.append(delta)
+                    yield TokenEvent(text=delta)
         except Exception as exc:  # flush partial, then surface as a terminal event
             bound_log.warning("stream_error", error=str(exc))
             yield ErrorEvent(message=str(exc), trace_id=trace_id)

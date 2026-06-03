@@ -67,6 +67,13 @@ class Retriever(Protocol):
 
 
 @runtime_checkable
+class Reranker(Protocol):
+    def rerank(
+        self, query: str, chunks: list[Chunk], top_n: int
+    ) -> list[ScoredChunk]: ...
+
+
+@runtime_checkable
 class ContextAssembler(Protocol):
     def assemble(
         self, query: str, chunks: list[Chunk], token_budget: int
@@ -76,3 +83,4 @@ class ContextAssembler(Protocol):
 @runtime_checkable
 class LLMProvider(Protocol):
     def complete(self, messages: list[dict[str, object]], **opts: object) -> Completion: ...
+    def stream(self, messages: list[dict[str, object]], **opts: object) -> Iterator[str]: ...

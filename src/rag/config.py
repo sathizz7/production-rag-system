@@ -37,6 +37,27 @@ class Settings(BaseSettings):
     generation_temperature: float = 0.0
     generation_max_tokens: int = 4096  # headroom for gemini-2.5 "thinking" + the answer
 
+    # Hybrid retrieval
+    rrf_k: int = 60                       # RRF damping constant
+    candidate_k: int = 30                 # over-fetch per leg before fusion; rerank pool size
+    # NOTE: Postgres FTS language is frozen to 'english' in P0b. It MUST match the
+    # STORED generated tsvector column (migration 0002: to_tsvector('english', ...)).
+    # A runtime language knob would silently desync the query language from the column,
+    # so there is intentionally none — multi-language is a future migration, not config.
+
+    # Rerank (Cohere via LiteLLM); disabled until a key is present
+    cohere_api_key: str = ""
+    rerank_model: str = "cohere/rerank-english-v3.0"
+    rerank_enabled: bool = False
+
+    # Eval (dedicated DB so the harness NEVER writes the app/dev database)
+    eval_database_url: str = ""           # e.g. .../rag_eval ; empty -> rag-eval errors out
+
+    # Observability (all optional; absent keys → features no-op)
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
+    langfuse_host: str = "https://cloud.langfuse.com"
+
 
 @lru_cache
 def get_settings() -> Settings:
@@ -44,13 +65,21 @@ def get_settings() -> Settings:
 
 
 def apply_provider_env(settings: Settings | None = None) -> None:
-    """Export provider API keys from Settings (.env) into ``os.environ``.
+    """Export provider API keys from Settings (.env) into ``os.environ`` for LiteLLM.
 
-    LiteLLM reads keys such as ``GEMINI_API_KEY`` from the process environment, but
+    LiteLLM and the Langfuse callback read keys from the process environment, but
     pydantic-settings only loads ``.env`` into the Settings object. Call this at
-    app/CLI startup so a key placed in ``.env`` reaches LiteLLM without requiring
-    ``uv run --env-file``. Pre-existing environment values win (``setdefault``).
+    app/CLI startup so plain ``uv run`` works without ``--env-file``. Pre-existing
+    environment values win (``setdefault``).
     """
     settings = settings or get_settings()
-    if settings.gemini_api_key:
-        os.environ.setdefault("GEMINI_API_KEY", settings.gemini_api_key)
+    pairs = {
+        "GEMINI_API_KEY": settings.gemini_api_key,
+        "COHERE_API_KEY": settings.cohere_api_key,
+        "LANGFUSE_PUBLIC_KEY": settings.langfuse_public_key,
+        "LANGFUSE_SECRET_KEY": settings.langfuse_secret_key,
+        "LANGFUSE_HOST": settings.langfuse_host,
+    }
+    for key, value in pairs.items():
+        if value:
+            os.environ.setdefault(key, value)

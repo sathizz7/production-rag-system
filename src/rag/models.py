@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -154,3 +155,26 @@ class UpsertStats(BaseModel):
     documents_upserted: int = 0
     chunks_upserted: int = 0
     skipped_unchanged: int = 0
+
+
+class TokenEvent(BaseModel):
+    type: Literal["token"] = "token"
+    text: str
+
+
+class DoneEvent(BaseModel):
+    type: Literal["done"] = "done"
+    answer: str
+    citations: list[Citation] = Field(default_factory=list)
+    usage: dict[str, object] = Field(default_factory=dict)
+    trace_id: str = ""
+    retrieval_scope: RetrievalScope = RetrievalScope.corpus_only
+
+
+class ErrorEvent(BaseModel):
+    type: Literal["error"] = "error"
+    message: str
+    trace_id: str = ""
+
+
+AnswerEvent = TokenEvent | DoneEvent | ErrorEvent

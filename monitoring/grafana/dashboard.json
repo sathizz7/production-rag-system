@@ -1,0 +1,22 @@
+{
+  "title": "RAG Service",
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "type": "timeseries", "title": "Request rate (rps)",
+      "targets": [{"expr": "sum(rate(rag_requests_total[1m])) by (endpoint)"}]
+    },
+    {
+      "type": "timeseries", "title": "Request p95 (s)",
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(rag_request_latency_seconds_bucket[5m])) by (le, endpoint))"}]
+    },
+    {
+      "type": "timeseries", "title": "Stage p95 (s)",
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(rag_stage_latency_seconds_bucket[5m])) by (le, stage))"}]
+    },
+    {
+      "type": "timeseries", "title": "Error rate",
+      "targets": [{"expr": "sum(rate(rag_requests_total{status=~\"5..\"}[5m]))"}]
+    }
+  ]
+}

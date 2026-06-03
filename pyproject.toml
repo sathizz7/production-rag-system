@@ -9,13 +9,18 @@ requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.18.4",
     "fastapi>=0.136.3",
+    "langfuse>=2.50.0",
     "litellm>=1.87.0",
+    "numpy>=2.1.0",
     "pgvector>=0.4.2",
+    "prometheus-client>=0.21.0",
     "psycopg[binary]>=3.3.4",
     "pydantic>=2",
     "pydantic-settings>=2.14.1",
     "pymupdf>=1.27.2.3",
+    "pyyaml>=6.0.2",
     "sqlalchemy>=2",
+    "sse-starlette>=2.1.0",
     "structlog>=25.5.0",
     "tiktoken>=0.13.0",
     "uvicorn[standard]>=0.48.0",
@@ -23,6 +28,7 @@ dependencies = [
 
 [project.scripts]
 rag-ingest = "rag.ingestion.cli:main"
+rag-eval = "rag.eval.runner:main"
 
 [build-system]
 requires = ["uv_build>=0.11.7,<0.12.0"]
@@ -54,7 +60,7 @@ packages = ["rag"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["pymupdf", "fitz", "pgvector.*", "testcontainers.*", "litellm", "litellm.*"]
+module = ["pymupdf", "fitz", "pgvector.*", "testcontainers.*", "litellm", "litellm.*", "yaml", "sse_starlette.*", "langfuse.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

@@ -7,6 +7,7 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
     Column,
+    Computed,
     DateTime,
     Engine,
     Integer,
@@ -17,6 +18,7 @@ from sqlalchemy import (
     UniqueConstraint,
     create_engine,
 )
+from sqlalchemy.dialects.postgresql import TSVECTOR
 
 from alembic import command
 
@@ -59,6 +61,12 @@ chunks = Table(
     Column("embedding_model", String, nullable=False),
     Column("embedding_dim", Integer, nullable=False),
     Column("embedding", Vector(EMBEDDING_DIM), nullable=False),
+    Column(
+        "text_search",
+        TSVECTOR,
+        Computed("to_tsvector('english', text)", persisted=True),
+        nullable=True,
+    ),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("deleted_at", DateTime(timezone=True), nullable=True),
     UniqueConstraint("doc_id", "ordinal", name="uq_chunks_doc_ordinal"),

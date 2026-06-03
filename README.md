@@ -1,42 +1,172 @@
 # Production-Grade RAG System
 
 Hybrid-RAG over a single Postgres + pgvector store, every model call through LiteLLM
-(Gemini default). This branch ships **P0a — the walking skeleton**: PDF ingest →
-dense retrieval → cited, grounded answers behind a FastAPI `/query` endpoint.
+(Gemini default). **P0b** ships hybrid retrieval, optional Cohere cross-encoder rerank,
+SSE token streaming, Prometheus/Langfuse observability, and a golden-set eval harness.
+P0a delivered the walking skeleton: PDF ingest → dense retrieval → cited, grounded answers.
 
-> Roadmap: P0b adds hybrid + rerank + streaming + observability + eval; see
-> [the design spec](docs/superpowers/specs/2026-06-02-production-rag-system-design.md).
+> Full design spec: [docs/superpowers/specs/2026-06-02-production-rag-system-design.md](docs/superpowers/specs/2026-06-02-production-rag-system-design.md)
+
+---
 
 ## Quickstart (local — primary path)
 
-Prerequisites: Python 3.12+, `uv`, and a local PostgreSQL 18 + pgvector (e.g. via pgAdmin).
+Prerequisites: Python 3.12+, `uv`, and a local PostgreSQL 18 + pgvector on `:5432`.
 
-```bash
-# 1. In pgAdmin, create databases `rag` and `rag_test`
-# 2. Copy the example env file and fill in your credentials
-cp .env.example .env          # fill GEMINI_API_KEY + your postgres password
+```powershell
+# 1. In pgAdmin, create databases: rag_db, rag_test, rag_eval
+# 2. Copy and fill the env file
+cp .env.example .env          # fill GEMINI_API_KEY + your Postgres password
 
 uv sync
-make migrate                  # builds schema (+ CREATE EXTENSION vector)
-make serve                    # start the API on :8000
-make ingest CORPUS=./data/raw # ingest PDFs from a directory
-make query Q="does nitrogen help maize?"
+uv run alembic upgrade head                                   # build schema (+ CREATE EXTENSION vector)
+uv run rag-ingest <your-pdf-dir>                              # ingest PDFs
+uv run uvicorn rag.api.app:create_app --factory --port 8000   # start the API
+
+# Streaming chat with citations:   http://localhost:8000/ui/
+# Prometheus metrics endpoint:     http://localhost:8000/metrics
+# Health check:                    http://localhost:8000/healthz
+
+uv run rag-eval   # live smoke eval (needs GEMINI_API_KEY + a dedicated rag_eval DB)
 ```
 
-Response is JSON: a grounded `answer`, `citations` (doc/chunk/page/char span),
-`usage` (tokens, latency), and a `trace_id`.
+Or with `make`:
 
-## How it works (P0a)
+```bash
+make migrate
+make serve                    # start API on :8000
+make ingest CORPUS=./data/raw
+make query Q="does nitrogen help maize?"
+make eval                     # live golden-set eval (costs money)
+make obs-up                   # optional Prometheus + Grafana + Langfuse stack
+```
 
-`PDF → parse → clean → fixed-token chunk → embed (text-embedding-004) → Postgres+pgvector`
-on the write side; `embed query → pgvector cosine KNN → assemble (token budget,
-numbered) → generate (gemini-2.5-pro) → validate citations` on the read side. A
-generated citation that does not map to an assembled chunk is stripped — the answer
-never ships a fabricated source.
+`POST /query` returns JSON: a grounded `answer`, `citations` (doc/chunk/page/char span),
+`usage` (tokens, latency), and a `trace_id`. `POST /query/stream` streams the same answer
+as Server-Sent Events and emits validated citations only after generation completes.
 
-Every subsystem sits behind a Protocol (spec §6) so P0b can add hybrid/rerank/streaming
-without changing signatures. All model calls route through LiteLLM (swap provider by
-changing the model string in `.env`).
+---
+
+## Architecture (P0b)
+
+```
+PDF → parse → clean → fixed-token chunk → embed (gemini-embedding-001, 768-d)
+    → Postgres + pgvector (HNSW) + FTS tsvector column
+                      │
+          ┌───────────┴───────────┐
+          │                       │
+   dense KNN (pgvector)    lexical FTS (ts_rank)
+          │                       │
+          └────── RRF fusion ─────┘
+                      │
+              [optional] Cohere cross-encoder rerank
+                      │
+           token-budget assembler → numbered context
+                      │
+           gemini-2.5-pro (streaming or batch)
+                      │
+           citation validator → strip fabricated refs
+                      │
+                  answer + citations
+```
+
+**Write path:** `rag-ingest` parses PDFs (PyMuPDF), cleans text (conservative offset-
+preserving pass), chunks at 512 tokens with 64-token overlap, embeds with
+`gemini-embedding-001` at 768 dimensions (Matryoshka truncation), and stores chunks in
+Postgres with both a pgvector column and a pre-computed `tsvector` column for FTS.
+
+**Read path (P0b):**
+
+1. **Dense retrieval** — pgvector cosine KNN, fetches `CANDIDATE_K` (default 30) chunks.
+2. **Lexical retrieval** — Postgres FTS (`ts_rank` score) against the `tsvector` column,
+   fetches another `CANDIDATE_K` pool. Language is frozen to `english` — it must match
+   the stored `to_tsvector('english', ...)` column; a runtime language knob would silently
+   desync queries from the index, so there is intentionally none.
+3. **RRF fusion** — Reciprocal Rank Fusion merges both ranked lists into a single ordering.
+   RRF ignores absolute scores (only rank positions matter), so the ts_rank vs. BM25
+   distinction has no effect on fusion quality (see Honesty callouts below).
+4. **Rerank (optional)** — `RerankedRetriever` is a decorator that wraps any retriever and
+   re-scores the fused pool with Cohere's cross-encoder via LiteLLM. Enable by setting
+   `RERANK_ENABLED=true` and `COHERE_API_KEY`.
+5. **Assemble** — top-k chunks are packed within a `CONTEXT_TOKEN_BUDGET` (default 6 000
+   tokens), numbered for citation indexing.
+6. **Generate** — `gemini-2.5-pro` produces the answer. `POST /query/stream` streams
+   tokens via SSE; citations are validated and appended after the final token.
+7. **Citation validation** — any citation that does not map to an assembled chunk is
+   stripped. The answer never ships a fabricated source.
+
+**Observability:**
+
+- **Langfuse** traces (span per stage) — enabled when `LANGFUSE_PUBLIC_KEY` and
+  `LANGFUSE_SECRET_KEY` are set; no-ops otherwise.
+- **Prometheus** metrics at `GET /metrics` — per-stage p95 latency histograms, request
+  counts, error rates.
+- **Grafana** dashboard — `make obs-up` starts the full
+  Prometheus + Grafana + Langfuse compose stack.
+
+Every subsystem sits behind a Protocol (spec §6), so swapping a retriever, embedder, or
+generator requires only a one-line config change.
+
+---
+
+## Honesty callouts
+
+**ts_rank is not BM25.**
+Postgres `ts_rank` is a tf-idf-ish scorer, not the probabilistic BM25 used by Elasticsearch
+or Solr. In this system that distinction is harmless: RRF fuses by rank position, ignoring
+absolute scores entirely, so a tf-idf rank and a true BM25 rank produce equivalent inputs
+to the fusion step. The upgrade path to real BM25 is
+[ParadeDB `pg_search`](https://docs.paradedb.com/documentation/full-text/overview) — a
+Postgres extension that exposes BM25 scoring while keeping the same table schema.
+
+**pgvector HNSW index limit is 2 000 dimensions.**
+pgvector's HNSW index supports a maximum of 2 000 dimensions. `gemini-embedding-001`
+natively produces 3 072-d vectors; we truncate to 768 d via Matryoshka Representation
+Learning (MRL) by setting `output_dimensionality=768` in the embedding call. 768 d sits
+well inside the limit and preserves retrieval quality (Google reports < 1% NDCG loss vs.
+full 3 072-d on most tasks).
+
+---
+
+## Results (P0b smoke eval)
+
+Measured live on 2026-06-03 with Gemini (`gemini-2.5-pro` generation, `gemini-2.5-flash`
+judge at temp 0) over the frozen 5-doc agronomy corpus and the 7-item golden set. The
+headline metric is the `ALL` aggregate row; per-stratum CIs are directional at this n —
+a statistically robust 30–50 item set is a Phase-1 deliverable.
+
+### Quality (`ALL` aggregate, 95% bootstrap CI)
+
+| Metric | ALL | CI (95%) |
+|--------|-----|----------|
+| Faithfulness (LLM-judged) | **1.00** | [1.00, 1.00] |
+| Answer relevance (LLM-judged) | **1.00** | [1.00, 1.00] |
+| Hit@10 | **1.00** | [1.00, 1.00] |
+| MRR | **0.92** | [0.75, 1.00] |
+| nDCG@10 | **0.94** | [0.82, 1.00] |
+| Rerank lift | _not measured_ | needs `COHERE_API_KEY` + `RERANK_ENABLED=true` |
+
+Retrieval is perfect on hit@10 and the out-of-corpus query correctly returns no context
+(scored 0 on retrieval, faithful on the answer). The rerank A/B (`baseline` vs
+`hybrid+rerank`) prints a `RERANK LIFT` line automatically once a Cohere key is set.
+
+### Latency (mean per stage, demo n=4 read-path calls — not p95)
+
+| Stage | Mean | Note |
+|-------|------|------|
+| Dense retrieval | 0.755 s | dominated by the query-embedding API round-trip |
+| Lexical retrieval | 0.014 s | Postgres FTS over the GIN index |
+| RRF fusion | 0.0003 s | rank-based, in-process |
+| Rerank | — | disabled (no Cohere key) |
+| Assemble | 0.024 s | token-budget context packing |
+| Generate | 10.5 s | `gemini-2.5-pro` thinking model, full answer |
+
+Stage timings come straight from the Prometheus `/metrics` histograms
+(`rag_stage_latency_seconds`). p95 percentiles need sustained load; these are means over
+the demo queries. Generation dominates end-to-end latency, as expected for a frontier
+thinking model.
+
+---
 
 ## Development
 
@@ -48,6 +178,37 @@ make lint        # ruff check
 make type        # mypy strict
 make fmt         # ruff format
 ```
+
+Or without `make`:
+
+```powershell
+uv run pytest -m "not integration and not live" -q   # unit
+uv run pytest -m integration -q                       # integration (local Postgres)
+uv run ruff check .
+uv run mypy src
+```
+
+---
+
+## Configuration reference
+
+All settings live in `.env` (copied from `.env.example`). Key P0b additions:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `CANDIDATE_K` | `30` | Over-fetch pool per retrieval leg before fusion/rerank |
+| `COHERE_API_KEY` | _(empty)_ | Cohere API key — required when `RERANK_ENABLED=true` |
+| `RERANK_ENABLED` | `false` | Enable Cohere cross-encoder rerank |
+| `RERANK_MODEL` | `cohere/rerank-english-v3.0` | LiteLLM model string for reranker |
+| `EVAL_DATABASE_URL` | _(empty)_ | Dedicated eval DB; `rag-eval` refuses to run if this equals `DATABASE_URL` |
+| `LANGFUSE_PUBLIC_KEY` | _(empty)_ | Enables Langfuse tracing when set |
+| `LANGFUSE_SECRET_KEY` | _(empty)_ | Langfuse secret |
+| `LANGFUSE_HOST` | `https://cloud.langfuse.com` | Langfuse endpoint |
+
+P0a variables (`GEMINI_API_KEY`, `DATABASE_URL`, `TEST_DATABASE_URL`, `GENERATION_MODEL`,
+`EMBEDDING_MODEL`, `EMBEDDING_DIM`) remain unchanged.
+
+---
 
 ## Optional: Docker (reviewers)
 

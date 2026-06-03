@@ -1,9 +1,9 @@
-.PHONY: migrate serve ingest query test test-int fmt lint type up down
+.PHONY: migrate serve ingest query test test-int fmt lint type up down eval obs-up
 
 migrate:   ## Run Alembic migrations against DATABASE_URL (from .env)
 	uv run alembic upgrade head
 
-serve:     ## Run the API locally against local Postgres
+serve:     ## Run the API with the streaming UI at /ui/ (no-make: uv run uvicorn rag.api.app:create_app --factory --port 8000)
 	uv run uvicorn rag.api.app:create_app --factory --reload --port 8000
 
 ingest:    ## Ingest PDFs: make ingest CORPUS=./data/raw
@@ -33,3 +33,9 @@ up:        ## Build and start api + postgres via Docker Compose (optional, revie
 
 down:
 	docker compose down
+
+eval:      ## Run the live golden-set smoke eval (needs GEMINI_API_KEY + EVAL_DATABASE_URL; costs money)
+	uv run rag-eval                                               # no-make: same line
+
+obs-up:    ## Optional Prometheus+Grafana+Langfuse dashboards
+	docker compose -f docker-compose.observability.yml up -d

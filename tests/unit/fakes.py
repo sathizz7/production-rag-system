@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from rag.models import Completion
+from rag.models import Chunk, Completion, MetadataFilter, Provenance, ScoredChunk
 
 Vector = list[float]
 
@@ -39,3 +39,61 @@ class FakeLLMProvider:
             text=self.reply,
             usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
         )
+
+
+def make_chunk(chunk_id: str, text: str = "x", doc_id: str | None = None) -> Chunk:
+    return Chunk(
+        chunk_id=chunk_id,
+        doc_id=doc_id if doc_id is not None else chunk_id,
+        source_uri="file:///x.pdf",
+        text=text,
+        ordinal=0,
+        page=1,
+        char_start=0,
+        char_end=len(text),
+        token_count=1,
+    )
+
+
+class FakeRetriever:
+    """Returns a fixed ScoredChunk list; records the args of the last call."""
+
+    def __init__(self, chunks: list[Chunk], provenance: Provenance = Provenance.dense) -> None:
+        self._chunks = chunks
+        self._provenance = provenance
+        self.last_call: tuple[str, int, MetadataFilter | None] | None = None
+
+    def retrieve(self, query: str, k: int, filt: MetadataFilter | None) -> list[ScoredChunk]:
+        self.last_call = (query, k, filt)
+        return [
+            ScoredChunk(chunk=c, score=1.0 / (i + 1), provenance=self._provenance)
+            for i, c in enumerate(self._chunks[:k])  # a real retriever returns at most k
+        ]
+
+
+class FakeReranker:
+    """Reverses the candidate order and keeps top_n; tags provenance=rerank."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, int]] = []
+
+    def rerank(self, query: str, chunks: list[Chunk], top_n: int) -> list[ScoredChunk]:
+        self.calls.append((query, top_n))
+        reversed_chunks = list(reversed(chunks))[:top_n]
+        return [
+            ScoredChunk(chunk=c, score=float(len(reversed_chunks) - i), provenance=Provenance.rerank)  # noqa: E501
+            for i, c in enumerate(reversed_chunks)
+        ]
+
+
+class FakeStreamingLLM:
+    """Yields canned token deltas for stream(); complete() returns the joined text."""
+
+    def __init__(self, tokens: list[str] | None = None) -> None:
+        self.tokens = tokens if tokens is not None else ["Answer ", "grounded ", "[1]."]
+
+    def stream(self, messages: list[dict], **opts: object):
+        yield from self.tokens
+
+    def complete(self, messages: list[dict], **opts: object) -> Completion:
+        return Completion(text="".join(self.tokens), usage={"total_tokens": 0})

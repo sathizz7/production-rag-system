@@ -33,6 +33,158 @@
 
 ---
 
+## DB Amendment (2026-06-02) — Local Postgres + pgvector instead of Docker
+
+**Decision:** the author runs a local PostgreSQL 18 + pgvector on `localhost:5432` (via pgAdmin). P0a targets that local server for development, the app, and integration tests. **testcontainers/Docker are no longer required to run or test P0a.** A `docker-compose.yml` is still shipped as an *optional* convenience for reviewers who lack a local Postgres (it uses the `pgvector/pgvector:pg16` image), but it is not the primary path.
+
+This section **overrides**: the testcontainers fixture in Task 10 Step 4, the "Docker required" notes in Tasks 10–13, and the Docker-first delivery in Task 19. Where this conflicts with an earlier task, follow this section.
+
+### Connection conventions
+- App/CLI read `DATABASE_URL`; integration tests read `TEST_DATABASE_URL`. Both live in a gitignored `.env`.
+- Use a **dedicated** test database so the fixture's schema-reset never touches real data:
+  - App DB `rag` → `postgresql+psycopg://postgres:<pw>@localhost:5432/rag`
+  - Test DB `rag_test` → `postgresql+psycopg://postgres:<pw>@localhost:5432/rag_test`
+- Create both databases once (pgAdmin → Databases → Create); the Alembic migration runs `CREATE EXTENSION IF NOT EXISTS vector` per-database.
+
+### Override A — `src/rag/config.py` (extends Task 2)
+Add one field to `Settings` (keep everything else); re-run the Task 2 config tests (still pass):
+```python
+    test_database_url: str = ""   # integration tests only; e.g. .../rag_test
+```
+
+### Override B — `src/rag/db.py` `run_migrations` (replaces the function in Task 10 Step 1)
+Force programmatic migration to target the passed URL regardless of ambient env (so the fixture migrates/resets ONLY the test DB):
+```python
+def run_migrations(database_url: str) -> None:
+    import os
+
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", database_url)
+    prev = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = database_url      # env.py reads this
+    try:
+        command.upgrade(cfg, "head")
+    finally:
+        if prev is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = prev
+```
+
+### Override C — `alembic/env.py` (replaces the URL logic in Task 10 Step 2)
+Resolve the URL from the environment, falling back to `Settings` (which loads `.env`) so both `alembic upgrade head` (CLI) and `run_migrations` (programmatic) agree:
+```python
+import os
+
+from rag.config import get_settings
+from rag.db import metadata_obj
+
+url = os.environ.get("DATABASE_URL") or get_settings().database_url
+config.set_main_option("sqlalchemy.url", url)
+target_metadata = metadata_obj
+```
+
+### Override D — `tests/conftest.py` `migrated_engine` + `clean_db` (replaces Task 10 Step 4)
+```python
+import os
+from collections.abc import Iterator
+
+import pytest
+from sqlalchemy import Engine, text
+
+
+@pytest.fixture(scope="session")
+def migrated_engine() -> Iterator[Engine]:
+    """Local Postgres+pgvector (TEST_DATABASE_URL): reset schema, migrate, yield engine."""
+    from rag.config import get_settings
+    from rag.db import get_engine, run_migrations
+
+    url = get_settings().test_database_url           # from .env; empty -> skip
+    if not url:
+        pytest.skip("TEST_DATABASE_URL not set — integration tests need local Postgres+pgvector")
+
+    reset = get_engine(url)
+    with reset.begin() as conn:                      # reset the DEDICATED test DB to empty
+        conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+    reset.dispose()
+
+    run_migrations(url)
+    engine = get_engine(url)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture
+def clean_db(migrated_engine: Engine) -> Engine:
+    with migrated_engine.begin() as conn:
+        conn.execute(text("TRUNCATE chunks, documents, source_watermarks"))
+    return migrated_engine
+```
+`get_settings()` loads `.env`, so `TEST_DATABASE_URL` is picked up with no shell exports. Drop the `from testcontainers...` import. (The `testcontainers` dev dependency becomes unused — leave it installed for now, harmless; it can go in final cleanup.)
+
+### Override E — integration test runs (Tasks 10 Step 6, 11, 12, 13)
+Prereq: `.env` has `TEST_DATABASE_URL=...rag_test`, that DB exists, and pgvector is available cluster-wide. Then just:
+```
+uv run pytest -m integration
+```
+No Docker. If `TEST_DATABASE_URL` is unset the integration tests **skip** (not fail), so unit-only environments stay green.
+
+### Override F — Task 19 delivery (local-first; compose optional)
+- **`.env.example`**:
+  ```bash
+  GEMINI_API_KEY=your-google-ai-studio-key
+  DATABASE_URL=postgresql+psycopg://postgres:your-pw@localhost:5432/rag
+  TEST_DATABASE_URL=postgresql+psycopg://postgres:your-pw@localhost:5432/rag_test
+  GENERATION_MODEL=gemini/gemini-2.5-pro
+  GRADER_MODEL=gemini/gemini-2.5-flash
+  EMBEDDING_MODEL=gemini/text-embedding-004
+  EMBEDDING_DIM=768
+  ```
+- **`Makefile`** (local targets replace the docker targets):
+  ```makefile
+  migrate:   ## alembic upgrade head against DATABASE_URL (.env)
+  	uv run alembic upgrade head
+  serve:     ## run the API locally against local Postgres
+  	uv run uvicorn rag.api.app:create_app --factory --reload --port 8000
+  ingest:    ## make ingest CORPUS=./data/raw
+  	uv run rag-ingest $(CORPUS)
+  query:     ## make query Q="..."
+  	curl -s -X POST localhost:8000/query -H "content-type: application/json" -d "{\"query\": \"$(Q)\"}"
+  test:
+  	uv run pytest -m "not integration and not live"
+  test-int:  ## needs local Postgres+pgvector + TEST_DATABASE_URL in .env
+  	uv run pytest -m integration
+  ```
+- **`README.md`** quickstart (local):
+  ```bash
+  # 1. In pgAdmin, create databases `rag` and `rag_test`
+  # 2. cp .env.example .env  &&  fill GEMINI_API_KEY + your postgres password
+  uv sync
+  make migrate                       # builds schema (+ CREATE EXTENSION vector)
+  make serve                         # start the API
+  make ingest CORPUS=./data/raw      # ingest PDFs
+  make query Q="does nitrogen help maize?"
+  ```
+- **`docker-compose.yml` / `Dockerfile`** — keep as written in Task 19 but label **optional (reviewers only)**; the `api` service points at its bundled `pgvector/pgvector:pg16` `postgres` service via `DATABASE_URL`. The author's primary path is local.
+
+### Override G — integration test vectors are 768-dim
+The `embedding` column is `vector(768)` with a **standard** HNSW index (`USING hnsw (embedding vector_cosine_ops)`). Do **not** make the column dimensionless or the index a partial/expression index — that would stop the dense query (Task 13) from using HNSW (silent seq-scan). Because the column is fixed at 768, **integration-test vectors must be 768-dim** and test chunks must set `embedding_dim=768`. Add this helper to each integration test module that builds vectors:
+```python
+def _vec(*head: float) -> list[float]:
+    """768-dim test vector from leading components (rest zero-padded)."""
+    v = [0.0] * 768
+    for i, x in enumerate(head):
+        v[i] = x
+    return v
+```
+Apply it to the literal vectors: Task 11 → `[_vec(0.1, 0.2, 0.3), _vec(0.4, 0.5, 0.6)]` and the single `[_vec(0.1, 0.2, 0.3)]`; Task 13 → mapping `{"near": _vec(1, 0, 0), "mid": _vec(0.7, 0.7, 0), "far": _vec(0, 0, 1), "QUERY": _vec(1, 0, 0)}` with `FakeEmbedder(dim=768)`. Zero-padding preserves cosine ordering, so Task 13's near/mid/far assertions are unchanged.
+
+### Cosmetic
+The Goal's "behind `docker compose up`" and the Conventions "boot real Postgres via Docker" now read as local-first; treat Docker as the optional reviewer path throughout.
+
+---
+
 ## File Structure
 
 Files created in P0a, each with one responsibility:

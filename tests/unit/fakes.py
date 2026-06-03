@@ -67,7 +67,7 @@ class FakeRetriever:
         self.last_call = (query, k, filt)
         return [
             ScoredChunk(chunk=c, score=1.0 / (i + 1), provenance=self._provenance)
-            for i, c in enumerate(self._chunks)
+            for i, c in enumerate(self._chunks[:k])  # a real retriever returns at most k
         ]
 
 

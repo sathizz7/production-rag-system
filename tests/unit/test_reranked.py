@@ -11,9 +11,10 @@ def test_reranked_over_fetches_pool_then_returns_reranked_top_k() -> None:
 
     results = rr.retrieve("q", k=3, filt=None)
 
-    assert base.last_call == ("q", 8, None)             # over-fetched candidate_k
+    assert base.last_call == ("q", 8, None)             # over-fetched candidate_k (pool of 8)
     assert reranker.calls == [("q", 3)]                  # reranked down to k
-    assert [r.chunk.chunk_id for r in results] == ["9", "8", "7"]  # FakeReranker reverses
+    # base returns top-8 (ids 0..7); FakeReranker reverses → top-3 = 7,6,5
+    assert [r.chunk.chunk_id for r in results] == ["7", "6", "5"]
     assert all(r.provenance == Provenance.rerank for r in results)
 
 

@@ -67,5 +67,20 @@ class FakeRetriever:
         self.last_call = (query, k, filt)
         return [
             ScoredChunk(chunk=c, score=1.0 / (i + 1), provenance=self._provenance)
-            for i, c in enumerate(self._chunks[:k])
+            for i, c in enumerate(self._chunks)
+        ]
+
+
+class FakeReranker:
+    """Reverses the candidate order and keeps top_n; tags provenance=rerank."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, int]] = []
+
+    def rerank(self, query: str, chunks: list[Chunk], top_n: int) -> list[ScoredChunk]:
+        self.calls.append((query, top_n))
+        reversed_chunks = list(reversed(chunks))[:top_n]
+        return [
+            ScoredChunk(chunk=c, score=float(len(reversed_chunks) - i), provenance=Provenance.rerank)  # noqa: E501
+            for i, c in enumerate(reversed_chunks)
         ]

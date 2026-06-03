@@ -5,7 +5,7 @@ from pathlib import Path
 
 import structlog
 
-from rag.config import get_settings
+from rag.config import apply_provider_env, get_settings
 from rag.db import get_engine
 from rag.ingestion.pipeline import IngestionPipeline
 from rag.ingestion.repository import PgChunkRepository
@@ -20,6 +20,7 @@ def main() -> None:
     args = parser.parse_args()
 
     settings = get_settings()
+    apply_provider_env(settings)
     engine = get_engine(settings.database_url)
     pipeline = IngestionPipeline(
         repository=PgChunkRepository(engine),

@@ -2,10 +2,12 @@ from rag.config import Settings
 
 
 def test_settings_defaults_use_gemini() -> None:
-    s = Settings(gemini_api_key="x", database_url="postgresql+psycopg://u:p@h:5432/db")
+    s = Settings(
+        _env_file=None, gemini_api_key="x", database_url="postgresql+psycopg://u:p@h:5432/db"
+    )
     assert s.generation_model == "gemini/gemini-2.5-pro"
     assert s.grader_model == "gemini/gemini-2.5-flash"
-    assert s.embedding_model == "gemini/text-embedding-004"
+    assert s.embedding_model == "gemini/gemini-embedding-001"
     assert s.embedding_dim == 768
 
 

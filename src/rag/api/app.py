@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from rag.api.routes import router
-from rag.config import get_settings
+from rag.config import apply_provider_env, get_settings
 from rag.db import get_engine
 from rag.generation.answerer import StraightLineAnswerer
 from rag.generation.assembler import TokenBudgetAssembler
@@ -14,6 +14,7 @@ from rag.retrieval.dense import DenseRetriever
 
 def _build_answerer() -> StraightLineAnswerer:
     settings = get_settings()
+    apply_provider_env(settings)
     engine = get_engine(settings.database_url)
     embedder = LiteLLMEmbeddingProvider(
         model=settings.embedding_model, dim=settings.embedding_dim
